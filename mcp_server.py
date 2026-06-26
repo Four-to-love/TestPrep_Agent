@@ -2,6 +2,8 @@ import sqlite3
 import json
 import os
 from datetime import datetime, date
+import json
+from constants import STATE_CUTOFFS  # Import the single source of truth
 
 # Set absolute paths so the server always finds the data
 DIR_PATH = os.path.dirname(os.path.abspath(__file__))
@@ -15,35 +17,14 @@ class TestPrepMCPServer:
     """
     
     @staticmethod
-    def get_merit_threshold(state_code, class_year):
-        """Tool 1: Fetches the National Merit threshold."""
-        try:
-            conn = sqlite3.connect(DB_PATH)
-            c = conn.cursor()
-            
-            c.execute('''
-                SELECT class_year, selection_index, is_projection 
-                FROM merit_thresholds 
-                WHERE state_code = ? AND class_year <= ?
-                ORDER BY class_year DESC
-                LIMIT 1
-            ''', (state_code.upper(), class_year))
-            
-            result = c.fetchone()
-            conn.close()
-            
-            if result:
-                found_year, score, is_proj = result
-                status = "projected" if is_proj else "official"
-                
-                if found_year == class_year:
-                    return f"The {status} National Merit cutoff for {state_code.upper()} in {class_year} is {score}."
-                else:
-                    return f"Data for {class_year} is not yet available. Using the latest {status} baseline from {found_year}, the estimated cutoff for {state_code.upper()} is {score}."
-            else:
-                return f"No threshold data found for {state_code.upper()}."
-        except Exception as e:
-            return f"Database error: {str(e)}"
+    def get_merit_threshold(self, state_code: str, class_year: int = None) -> str:
+        """
+        MCP Tool: Fetches the National Merit threshold for a given state.
+        Now reads from the centralized constants.py file.
+        """
+        target = STATE_CUTOFFS.get(state_code.upper(), 220)
+        return f"The National Merit Selection Index threshold for {state_code.upper()} is currently {target}."
+
             
     @staticmethod
     def search_knowledge_base(topic_keyword):
