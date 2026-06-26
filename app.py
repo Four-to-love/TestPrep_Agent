@@ -5,7 +5,8 @@ import uuid
 from datetime import date
 
 import interceptor
-from agents import GatekeeperAgent, StrategistAgent
+from agents import StrategistAgent
+from constants import STATES_LIST, STATE_CUTOFFS
 
 st.set_page_config(page_title="TestPrep_Agent", layout="wide")
 
@@ -44,26 +45,8 @@ def calculate_selection_index(rw_score, math_score):
     return int(((2 * rw_score) + math_score) / 10)
 
 def get_state_target(state_code):
-    """Hardcoded dictionary lookup for NMSI cutoffs. Disregards class year."""
-    state_cutoffs = {
-        'AL': 212, 'AK': 212, 'AZ': 218, 'AR': 211, 'CA': 221, 'CO': 217, 'CT': 221, 'DE': 220,
-        'FL': 219, 'GA': 219, 'HI': 216, 'ID': 214, 'IL': 219, 'IN': 215, 'IA': 212, 'KS': 214,
-        'KY': 212, 'LA': 212, 'ME': 213, 'MD': 222, 'MA': 222, 'MI': 218, 'MN': 218, 'MS': 211,
-        'MO': 214, 'MT': 211, 'NE': 213, 'NV': 215, 'NH': 219, 'NJ': 223, 'NM': 211, 'NY': 220,
-        'NC': 219, 'ND': 211, 'OH': 216, 'OK': 211, 'OR': 220, 'PA': 219, 'RI': 216, 'SC': 212,
-        'SD': 211, 'TN': 218, 'TX': 219, 'UT': 213, 'VT': 216, 'VA': 221, 'WA': 222, 'WV': 211,
-        'WI': 214, 'WY': 211, 'DC': 223
-    }
-    return state_cutoffs.get(state_code, 220)
-
-# --- GLOBAL CONSTANTS ---
-STATES_LIST = [
-    "AL", "AK", "AZ", "AR", "CA", "CO", "CT", "DE", "FL", "GA", 
-    "HI", "ID", "IL", "IN", "IA", "KS", "KY", "LA", "ME", "MD", 
-    "MA", "MI", "MN", "MS", "MO", "MT", "NE", "NV", "NH", "NJ", 
-    "NM", "NY", "NC", "ND", "OH", "OK", "OR", "PA", "RI", "SC", 
-    "SD", "TN", "TX", "UT", "VT", "VA", "WA", "WV", "WI", "WY", "DC"
-]
+    """Dictionary lookup for NMSI cutoffs using constants.py."""
+    return STATE_CUTOFFS.get(state_code, 220)
 
 # --- SESSION STATE ---
 if 'authenticated' not in st.session_state:
@@ -72,10 +55,10 @@ if 'student_id' not in st.session_state:
     st.session_state['student_id'] = None
 if 'session_token' not in st.session_state:
     st.session_state['session_token'] = None
-if 'messages' not in st.session_state:
-    st.session_state['messages'] = [{"role": "assistant", "content": "I am your multi-grade TestPrep_Agent. How can we optimize your trajectory today?"}]
+if 'action_plan' not in st.session_state:
+    st.session_state['action_plan'] = None
 
-# --- THE SLIDE-OUT SIDEBAR (AUTH, DATA, & AGENT CONSOLE) ---
+# --- THE SLIDE-OUT SIDEBAR (AUTH & SECURE DATA ENTRY ONLY) ---
 with st.sidebar:
     if not st.session_state['authenticated']:
         st.header("🔒 Access Control")
@@ -130,7 +113,6 @@ with st.sidebar:
                     st.error("Please enter both Student ID and PIN.")
                     
     else:
-        # 1. Secure Data Entry Forms (Top of Sidebar)
         st.success(f"Session Locked: {st.session_state['session_token'][:8]}...")
         st.divider()
         
@@ -175,61 +157,6 @@ with st.sidebar:
                         st.error(response["message"])
         
         st.divider()
-        
-        # 2. Slide-Out Agent Console (Middle/Bottom of Sidebar)
-        st.subheader("🤖 Strategist Agent")
-        
-        for msg in st.session_state['messages']:
-            with st.chat_message(msg["role"]):
-                st.markdown(msg["content"])
-
-        if prompt := st.chat_input("Ask for a timeline analysis..."):
-            st.session_state['messages'].append({"role": "user", "content": prompt})
-            with st.chat_message("user"):
-                st.markdown(prompt)
-
-            with st.chat_message("assistant"):
-                with st.status("🔒 Securing payload...", expanded=True) as status:
-                    gatekeeper = GatekeeperAgent()
-                    is_safe, rejection_reason = gatekeeper.evaluate_intent(prompt)
-                    
-                    if not is_safe:
-                        status.update(label="Threat Blocked", state="error")
-                        st.error(f"Intercept: {rejection_reason}")
-                        st.session_state['messages'].append({"role": "assistant", "content": f"**Blocked:** {rejection_reason}"})
-                        st.stop()
-                    status.update(label="Sanitized.", state="complete")
-
-                with st.status("🧠 Processing...", expanded=True) as status:
-                    user_state = st.session_state.get('state_code')
-                    state_for_agent = user_state if user_state in STATES_LIST else "Unknown (Profile Incomplete)"
-                    
-                    strategist = StrategistAgent(
-                        student_id=st.session_state['student_id'], 
-                        state_code=state_for_agent,
-                        class_year=st.session_state.get('class_year', 2028)
-                    )
-                    
-                    response_placeholder = st.empty()
-                    full_response = ""
-                    
-                    try:
-                        for event in strategist.process_query(prompt): 
-                            if event["type"] == "tool_call":
-                                st.write(f"⚙️ `{event['tool_name']}`")
-                            elif event["type"] == "content":
-                                full_response += event["text"]
-                                response_placeholder.markdown(full_response + "▌")
-                        
-                        status.update(label="Complete.", state="complete")
-                        response_placeholder.markdown(full_response)
-                        
-                    except Exception as e:
-                        status.update(label="Failed", state="error")
-                        st.error(f"Error: {str(e)}")
-                        full_response = "I encountered an error."
-                
-                st.session_state['messages'].append({"role": "assistant", "content": full_response})
         
         if st.button("Logout", use_container_width=True):
             st.session_state.clear()
@@ -283,6 +210,50 @@ if st.session_state['authenticated']:
             st.success("🎉 Trajectory meets National Merit requirements!")
         else:
             st.warning("Trajectory falls below cutoff.")
+
+    st.divider()
+
+    # --- HEADLESS AGENT SCHEDULE DASHBOARD ---
+    st.header("🧠 Autonomous Action Plan")
+    if st.button("Generate Strategic Timeline", type="primary"):
+        with st.spinner("Agent is mapping the Khan Academy curriculum to your remaining timeline..."):
+            agent = StrategistAgent(
+                student_id=st.session_state['student_id'], 
+                state_code=st.session_state.get('state_code', 'Unknown'),
+                class_year=st.session_state.get('class_year', 2028)
+            )
+            st.session_state['action_plan'] = agent.generate_action_plan()
+
+    # Render the Action Plan JSON if generated
+    if st.session_state['action_plan']:
+        plan = st.session_state['action_plan']
+        
+        if "error" in plan:
+            st.error(plan["error"])
+        else:
+            st.success("Curriculum Mapping Complete.")
+            st.write(f"**Strategic Insight:** {plan.get('analysis_summary', '')}")
+            
+            weeks = plan.get('total_weeks', 'Calculated')
+            st.subheader(f"🗓️ Comprehensive Pacing Guide ({weeks} Weeks)")
+            
+            # Draw a dual-column UI grid for the schedule
+            for item in plan.get('schedule', []):
+                with st.container():
+                    col_week, col_math, col_rw = st.columns([1, 2, 2])
+                    
+                    with col_week: 
+                        st.markdown(f"### {item.get('week')}")
+                        
+                    with col_math: 
+                        st.markdown(f"**🧮 Math:** {item.get('math_topic')}")
+                        st.caption(f"[Khan Academy Practice]({item.get('math_link')})")
+                        
+                    with col_rw: 
+                        st.markdown(f"**📚 Reading/Writing:** {item.get('rw_topic')}")
+                        st.caption(f"[Khan Academy Practice]({item.get('rw_link')})")
+                        
+                    st.divider()
 
 else:
     st.warning("Awaiting Zero-Trust Authentication. Please log in using the sidebar to access the dashboard.")

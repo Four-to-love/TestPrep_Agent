@@ -2,53 +2,55 @@ import sqlite3
 import json
 import os
 from datetime import datetime, date
-import json
-from constants import STATE_CUTOFFS  # Import the single source of truth
-
-# Set absolute paths so the server always finds the data
-DIR_PATH = os.path.dirname(os.path.abspath(__file__))
-DB_PATH = os.path.join(DIR_PATH, "student_state.db")
-KB_PATH = os.path.join(DIR_PATH, "knowledge_base", "rag_store.json")
+from constants import STATE_CUTOFFS  # Single source of truth
 
 class TestPrepMCPServer:
     """
     Model Context Protocol (MCP) Server.
     The ONLY authorized bridge between the AI Agents and the raw data.
     """
-    
-    @staticmethod
+    def __init__(self):
+        # Set absolute paths bound to the instance so the server always finds the data
+        self.dir_path = os.path.dirname(os.path.abspath(__file__))
+        self.db_path = os.path.join(self.dir_path, "student_state.db")
+        
+        # Updated to point correctly to your Knowledge_base subfolder!
+        self.kb_path = os.path.join(self.dir_path, "Knowledge_base", "rag_store.json")
+
     def get_merit_threshold(self, state_code: str, class_year: int = None) -> str:
         """
-        MCP Tool: Fetches the National Merit threshold for a given state.
-        Now reads from the centralized constants.py file.
+        MCP Tool 1: Fetches the National Merit threshold for a given state.
+        Reads from the centralized constants.py file.
         """
         target = STATE_CUTOFFS.get(state_code.upper(), 220)
         return f"The National Merit Selection Index threshold for {state_code.upper()} is currently {target}."
 
-            
-    @staticmethod
-    def search_knowledge_base(topic_keyword):
-        """Tool 2: Retrieves academic strategies from the JSON semantic brain."""
+    def search_knowledge_base(self, topic_keyword: str) -> str:
+        """
+        MCP Tool 2: Retrieves academic strategies from the JSON semantic brain.
+        """
         try:
-            with open(KB_PATH, "r") as f:
+            with open(self.kb_path, "r") as f:
                 kb = json.load(f)
                 
-            results = [
-                fact["content"] for fact in kb["facts"] 
-                if topic_keyword.lower() in fact["topic"].lower() or topic_keyword.lower() in fact["content"].lower()
-            ]
+            results = []
+            topic_lower = topic_keyword.lower()
+            
+            # Parses the flat dict structure: {"Grade 8": "Strategy...", "Grade 9": "Strategy..."}
+            for grade, content in kb.items():
+                if topic_lower in grade.lower() or topic_lower in content.lower():
+                    results.append(f"{grade}: {content}")
             
             if results:
                 return " | ".join(results)
             return "No relevant guidelines found in the Knowledge Base."
         except FileNotFoundError:
-            return "Error: Knowledge Base file not found. Run ingestion script first."
+            return f"Error: Knowledge Base file not found at {self.kb_path}."
 
-    @staticmethod
-    def get_student_scores(student_id):
-        """Tool 3: Retrieves a specific student's past practice scores safely."""
+    def get_student_scores(self, student_id: str) -> str:
+        """MCP Tool 3: Retrieves a specific student's past practice scores safely."""
         try:
-            conn = sqlite3.connect(DB_PATH)
+            conn = sqlite3.connect(self.db_path)
             c = conn.cursor()
             c.execute('''
                 SELECT test_date, sat_total_score, math_score, reading_writing_score 
@@ -66,10 +68,9 @@ class TestPrepMCPServer:
         except Exception as e:
             return f"Database error: {str(e)}"
 
-    @staticmethod
-    def Skill_Fetch_Academic_Timeline(class_year, target_month_year=None):
+    def Skill_Fetch_Academic_Timeline(self, class_year: int, target_month_year: str = None) -> dict:
         """
-        Tool 4: Calculates exact weeks remaining.
+        MCP Tool 4: Calculates exact weeks remaining.
         Accepts an optional user-defined target_month_year (format: "YYYY-MM").
         Calculates all deadlines based on the 1st of the month.
         """
@@ -82,16 +83,14 @@ class TestPrepMCPServer:
             years_to_grad -= 1
         
         grade = 12 - years_to_grad
-        
         target_date = None
         milestone = ""
         urgency = ""
         
-        # If the user explicitly provided a test date, override the default logic
         if target_month_year:
             try:
                 t_year, t_month = map(int, target_month_year.split("-"))
-                target_date = date(t_year, t_month, 1)  # Anchored to the 1st
+                target_date = date(t_year, t_month, 1)
                 milestone = f"User-Selected Target ({target_date.strftime('%B %Y')})"
                 urgency = "Custom Pacing"
                 
@@ -99,16 +98,14 @@ class TestPrepMCPServer:
                     return {"status": "Error: The selected test date is in the past."}
             except ValueError:
                 return {"error": "Invalid date format. Expected YYYY-MM."}
-                
-        # Otherwise, fall back to the dynamic grade logic
         else:
             if grade <= 10:
                 target_year = class_year - 2 
-                target_date = date(target_year, 10, 1) # Changed to the 1st
+                target_date = date(target_year, 10, 1)
                 
                 if now.date() > target_date:
                     target_year = class_year - 1
-                    target_date = date(target_year, 3, 1) # Changed to the 1st
+                    target_date = date(target_year, 3, 1)
                     milestone = "First Official SAT (Spring 11th Grade)"
                     urgency = "Medium (Active Preparation)"
                 else:
@@ -117,11 +114,11 @@ class TestPrepMCPServer:
                     
             elif grade == 11:
                 target_year = class_year - 1
-                target_date = date(target_year, 3, 1) # Changed to the 1st
+                target_date = date(target_year, 3, 1)
                 
                 if now.date() > target_date:
                     target_year = class_year
-                    target_date = date(target_year, 10, 1) # Changed to the 1st
+                    target_date = date(target_year, 10, 1)
                     milestone = "Final SAT Retakes (Fall 12th Grade)"
                     urgency = "High (Acceleration Protocol)"
                 else:
@@ -131,7 +128,6 @@ class TestPrepMCPServer:
             else:
                 return {"status": "Testing window closed or closing. Focus on college applications."}
 
-        # Calculate exact weeks remaining
         delta = target_date - now.date()
         weeks_remaining = max(0, delta.days // 7)
         
@@ -143,11 +139,10 @@ class TestPrepMCPServer:
             "urgency_level": urgency
         }
 
-    @staticmethod
-    def Skill_Analyze_Performance_Gaps(student_id):
-        """Tool 5: Pulls historical practice scores to identify weakest domains."""
+    def Skill_Analyze_Performance_Gaps(self, student_id: str) -> dict:
+        """MCP Tool 5: Pulls historical practice scores to identify weakest domains."""
         try:
-            conn = sqlite3.connect(DB_PATH)
+            conn = sqlite3.connect(self.db_path)
             c = conn.cursor()
             c.execute('''
                 SELECT test_date, sat_total_score, math_score, reading_writing_score
@@ -195,6 +190,28 @@ class TestPrepMCPServer:
         except Exception as e:
             return {"error": f"Database error: {str(e)}"}
 
+    def execute_tool(self, tool_name: str, kwargs: dict) -> str:
+        """
+        Dispatcher method. The StrategistAgent passes the tool name and arguments here,
+        and this method executes the correct function securely.
+        """
+        tools = {
+            "get_merit_threshold": self.get_merit_threshold,
+            "search_knowledge_base": self.search_knowledge_base,
+            "get_student_scores": self.get_student_scores,
+            "Skill_Fetch_Academic_Timeline": self.Skill_Fetch_Academic_Timeline,
+            "Skill_Analyze_Performance_Gaps": self.Skill_Analyze_Performance_Gaps
+        }
+        
+        if tool_name in tools:
+            try:
+                result = tools[tool_name](**kwargs)
+                return json.dumps(result) if isinstance(result, dict) else str(result)
+            except Exception as e:
+                return f"Tool Execution Error: {str(e)}"
+        else:
+            return f"Error: Security policy blocked execution. Tool '{tool_name}' is not recognized."
+
 if __name__ == "__main__":
     server = TestPrepMCPServer()
     print("--- Testing Updated Timeline Logic ---")
@@ -203,6 +220,6 @@ if __name__ == "__main__":
     default_result = server.Skill_Fetch_Academic_Timeline(2028)
     print(json.dumps(default_result, indent=2))
     
-    print("\n2. Testing User-Selected Override (August 2026):")
-    override_result = server.Skill_Fetch_Academic_Timeline(2028, "2026-08")
-    print(json.dumps(override_result, indent=2))
+    print("\n2. Testing Dispatcher with Knowledge Base:")
+    kb_result = server.execute_tool("search_knowledge_base", {"topic_keyword": "Grade 11"})
+    print(kb_result)

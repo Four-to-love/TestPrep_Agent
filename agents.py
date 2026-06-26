@@ -1,76 +1,94 @@
+import os
 import json
-from datetime import datetime
+from google import genai
+from google.genai import types
 from mcp_server import TestPrepMCPServer
 
-class GatekeeperAgent:
-    def __init__(self):
-        self.malicious_keywords = [
-            "ignore previous", "delete", "drop", "update", 
-            "insert", "change my score", "bypass", "system prompt"
-        ]
-
-    def evaluate_intent(self, prompt: str) -> tuple[bool, str]:
-        """Scans the input for malicious SQL/Database alteration intents."""
-        prompt_lower = prompt.lower()
-        for word in self.malicious_keywords:
-            if word in prompt_lower:
-                return False, f"Unauthorized database modification attempt detected ('{word}')."
-        return True, ""
-
-
 class StrategistAgent:
-    # UPDATED: Now requires class_year dynamically
-    def __init__(self, student_id: str, state_code: str, class_year: int):
+    """
+    Headless Analytical Engine.
+    Maps the full Khan Academy curriculum across the student's remaining timeline using the new GenAI SDK.
+    """
+    def __init__(self, student_id, state_code, class_year):
         self.student_id = student_id
         self.state_code = state_code
         self.class_year = class_year
         self.mcp = TestPrepMCPServer()
+        
+        # 1. Initialize the new SDK client (automatically picks up GEMINI_API_KEY from environment)
+        self.client = genai.Client()
+        
+        # 2. Define actual Python functions for the agent to call automatically
+        def fetch_merit_threshold(state_code: str) -> str:
+            """Fetches the National Merit threshold for a state."""
+            return str(self.mcp.get_merit_threshold(str(state_code)))
 
-    def calculate_current_grade(self, class_year):
-        """Dynamically calculates the student's grade level based on the current date."""
-        current_year = datetime.now().year
-        current_month = datetime.now().month
-        
-        years_to_grad = class_year - current_year
-        if current_month >= 8:
-            years_to_grad -= 1
-            
-        calculated_grade = 12 - years_to_grad
-        if calculated_grade > 12: return 12
-        if calculated_grade < 8: return 8
-        return calculated_grade
+        def fetch_academic_timeline(class_year: int) -> dict:
+            """Calculates exact weeks remaining until the next testing milestone."""
+            return self.mcp.Skill_Fetch_Academic_Timeline(int(class_year))
 
-    def process_query(self, prompt: str):
-        """A generator that yields tool execution logs and final text content."""
-        # 1. Temporal Calculation using dynamic class_year
-        grade = self.calculate_current_grade(self.class_year)
-        search_keyword = f"Grade {grade}"
+        def analyze_performance_gaps(student_id: str) -> dict:
+            """Analyzes past scores to identify the student's weakest domain."""
+            return self.mcp.Skill_Analyze_Performance_Gaps(str(student_id))
+
+        self.tools = [fetch_merit_threshold, fetch_academic_timeline, analyze_performance_gaps]
+
+        # 3. Define System Instructions
+        self.system_instruction = f"""You are a headless TestPrep routing engine analyzing Student {self.student_id} (Class of {self.class_year}, State: {self.state_code}).
         
-        # --- TOOL EXECUTION 1: Fetch Thresholds ---
-        yield {
-            "type": "tool_call",
-            "tool_name": "get_merit_threshold",
-            "tool_args": {"state_code": self.state_code, "class_year": self.class_year}
-        }
-        threshold_data = self.mcp.get_merit_threshold(self.state_code, self.class_year)
+        Step 1: Call fetch_academic_timeline to determine the exact weeks remaining until their next test.
+        Step 2: Call analyze_performance_gaps to determine if they need to prioritize Math or Reading/Writing.
+        Step 3: Spread the FULL scope of the Khan Academy Digital SAT prep across the calculated weeks remaining. Every week MUST contain both a Math and a Reading/Writing topic.
+
+        Khan Academy Scope Reference:
+        - Math Units: Algebra, Advanced Math, Problem-Solving and Data Analysis, Geometry and Trigonometry.
+        - R/W Units: Information and Ideas, Craft and Structure, Expression of Ideas, Standard English Conventions.
         
-        # --- TOOL EXECUTION 2: Semantic Brain ---
-        yield {
-            "type": "tool_call",
-            "tool_name": "search_knowledge_base",
-            "tool_args": {"topic_keyword": search_keyword}
-        }
-        pacing_data = self.mcp.search_knowledge_base(search_keyword)
+        Base Links to use:
+        Math: https://www.khanacademy.org/test-prep/v2-sat-math
+        R/W: https://www.khanacademy.org/test-prep/sat-reading-and-writing
         
-        # --- SYNTHESIS ---
-        final_response = (
-            f"**Trajectory Analysis for Class of {self.class_year} ({self.state_code}):**\n\n"
-            f"📊 **Threshold Data:** {threshold_data}\n\n"
-            f"📅 **Current Positioning:** Since you are currently in **{search_keyword}**, "
-            f"your targeted pacing profile dictates the following:\n\n> {pacing_data}"
+        You MUST return ONLY a valid JSON object matching this exact schema. DO NOT wrap the output in markdown blocks (```json).
+        {{
+            "analysis_summary": "A 2-sentence summary of their timeline and strategic focus.",
+            "total_weeks": 12,
+            "schedule": [
+                {{
+                    "week": "Week 1",
+                    "math_topic": "Algebra - Linear Equations",
+                    "math_link": "url",
+                    "rw_topic": "Craft and Structure - Words in Context",
+                    "rw_link": "url"
+                }}
+            ]
+        }}"""
+        
+        # 4. Bundle tools and instructions into the new Config object
+        self.config = types.GenerateContentConfig(
+            system_instruction=self.system_instruction,
+            tools=self.tools,
+            temperature=0.2 # Lower temperature enforces stricter JSON structure
         )
-        
-        yield {
-            "type": "content",
-            "text": final_response
-        }
+
+    def generate_action_plan(self):
+        hardcoded_prompt = "Execute timeline calculation. Spread the Khan Academy curriculum across the remaining weeks and generate the JSON schedule."
+        try:
+            # The new SDK's chats.create handles multi-turn automatic function calling seamlessly
+            chat = self.client.chats.create(
+                model="gemini-2.5-flash", 
+                config=self.config
+            )
+            response = chat.send_message(hardcoded_prompt)
+            
+            # Clean up the response in case the model added markdown formatting
+            raw_text = response.text.strip()
+            if raw_text.startswith("```json"):
+                raw_text = raw_text[7:]
+            if raw_text.startswith("```"):
+                raw_text = raw_text[3:]
+            if raw_text.endswith("```"):
+                raw_text = raw_text[:-3]
+                
+            return json.loads(raw_text.strip())
+        except Exception as e:
+            return {"error": f"Agent failed to generate plan: {str(e)}"}
