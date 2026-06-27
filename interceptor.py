@@ -22,14 +22,12 @@ def process_secure_request(action_type, student_id, session_token, active_token,
         state_code = payload.get("state_code")
         grad_year = payload.get("graduation_year")
 
-        # Validate against the central constants file
         if state_code not in STATES_LIST:
             return {"status": "error", "message": "Validation Error: Invalid state code."}
         
-        # Validate multi-grade year boundaries
         try:
             grad_year = int(grad_year)
-            if not (2026 <= grad_year <= 2036):
+            if not (2026 <= grad_year <= 2032):
                 raise ValueError
         except (ValueError, TypeError):
             return {"status": "error", "message": "Validation Error: Graduation year must be between 2026 and 2032."}
@@ -51,10 +49,7 @@ def process_secure_request(action_type, student_id, session_token, active_token,
         rw_score = payload.get("reading_writing_score")
 
         try:
-            # Date format check
             datetime.strptime(test_date, "%Y-%m-%d")
-            
-            # Score bounds check (Accommodates both PSAT and SAT ranges)
             math_score = int(math_score)
             rw_score = int(rw_score)
             if not (160 <= math_score <= 800) or not (160 <= rw_score <= 800):
@@ -73,6 +68,29 @@ def process_secure_request(action_type, student_id, session_token, active_token,
             conn.commit()
             conn.close()
             return {"status": "success", "message": "Scores logged successfully."}
+        except Exception as e:
+            return {"status": "error", "message": f"Database Error: {str(e)}"}
+
+    elif action_type == "UPDATE_SYLLABUS":
+        topic = payload.get("topic")
+        is_completed = payload.get("is_completed")
+        
+        # Basic type validation
+        if not isinstance(topic, str) or is_completed not in [0, 1]:
+            return {"status": "error", "message": "Validation Error: Invalid syllabus data."}
+            
+        try:
+            conn = sqlite3.connect(DB_PATH)
+            c = conn.cursor()
+            # Upsert: Insert new topic progress, or update existing topic state
+            c.execute('''
+                INSERT INTO syllabus_progress (student_id, topic, is_completed)
+                VALUES (?, ?, ?)
+                ON CONFLICT(student_id, topic) DO UPDATE SET is_completed=excluded.is_completed
+            ''', (student_id, topic, is_completed))
+            conn.commit()
+            conn.close()
+            return {"status": "success"}
         except Exception as e:
             return {"status": "error", "message": f"Database Error: {str(e)}"}
 

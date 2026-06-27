@@ -2,7 +2,10 @@ import os
 import json
 from google import genai
 from google.genai import types
+from dotenv import load_dotenv
 from mcp_server import TestPrepMCPServer
+
+load_dotenv()
 
 class StrategistAgent:
     """
@@ -92,3 +95,34 @@ class StrategistAgent:
             return json.loads(raw_text.strip())
         except Exception as e:
             return {"error": f"Agent failed to generate plan: {str(e)}"}
+
+class SyllabusTutorAgent:
+    """
+    Advanced RAG Agent.
+    Reads the full 200-page College Board Assessment Framework PDF natively.
+    """
+    def __init__(self, uploaded_file):
+        self.client = genai.Client()
+        self.uploaded_file = uploaded_file # This is the PDF file object we will pass from Streamlit
+        
+        self.system_instruction = """You are an elite, highly supportive SAT tutor. 
+        Your ONLY job is to answer the student's questions using the official College Board Assessment Framework PDF provided to you.
+        Always cite the specific domain, skill, or data table from the framework when answering.
+        If the student asks something completely unrelated to the test, politely steer them back to test prep.
+        Keep answers encouraging, easily readable, and formatted beautifully with markdown."""
+        
+        self.config = types.GenerateContentConfig(
+            system_instruction=self.system_instruction,
+            temperature=0.2 
+        )
+
+    def answer_question(self, user_query: str) -> str:
+        """Sends the question AND the PDF to Gemini."""
+        try:
+            chat = self.client.chats.create(model="gemini-2.5-flash", config=self.config)
+            
+            # We pass BOTH the uploaded PDF file object and the user's question!
+            response = chat.send_message([self.uploaded_file, user_query])
+            return response.text
+        except Exception as e:
+            return f"I'm having trouble accessing the official framework right now. Error: {str(e)}"
