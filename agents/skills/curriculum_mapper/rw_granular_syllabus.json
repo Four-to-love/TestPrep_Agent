@@ -1,0 +1,103 @@
+{
+    "section": "Reading and Writing",
+    "units": [
+        {
+            "domain": "Information and Ideas",
+            "topics": [
+                {
+                    "name": "Central Ideas and Details",
+                    "granular_skills": [
+                        "Determining the primary theme",
+                        "Identifying supporting textual details"
+                    ]
+                },
+                {
+                    "name": "Command of Evidence: Textual",
+                    "granular_skills": [
+                        "Selecting quotes to support claims",
+                        "Evaluating hypotheses based on text"
+                    ]
+                },
+                {
+                    "name": "Command of Evidence: Quantitative",
+                    "granular_skills": [
+                        "Interpreting charts and tables",
+                        "Linking data sets to textual claims"
+                    ]
+                },
+                {
+                    "name": "Inferences",
+                    "granular_skills": [
+                        "Drawing unstated conclusions",
+                        "Following logical implications"
+                    ]
+                }
+            ]
+        },
+        {
+            "domain": "Craft and Structure",
+            "topics": [
+                {
+                    "name": "Words in Context",
+                    "granular_skills": [
+                        "Deducing high-utility vocabulary",
+                        "Analyzing word choice impact"
+                    ]
+                },
+                {
+                    "name": "Text Structure and Purpose",
+                    "granular_skills": [
+                        "Identifying rhetorical organization",
+                        "Determining the author's primary goal"
+                    ]
+                },
+                {
+                    "name": "Cross-Text Connections",
+                    "granular_skills": [
+                        "Comparing paired passages",
+                        "Synthesizing opposing viewpoints"
+                    ]
+                }
+            ]
+        },
+        {
+            "domain": "Expression of Ideas",
+            "topics": [
+                {
+                    "name": "Rhetorical Synthesis",
+                    "granular_skills": [
+                        "Combining provided bullet points",
+                        "Achieving specific rhetorical goals"
+                    ]
+                },
+                {
+                    "name": "Transitions",
+                    "granular_skills": [
+                        "Selecting logical connectives",
+                        "Establishing cause-and-effect flow"
+                    ]
+                }
+            ]
+        },
+        {
+            "domain": "Standard English Conventions",
+            "topics": [
+                {
+                    "name": "Boundaries",
+                    "granular_skills": [
+                        "Linking independent clauses",
+                        "Proper use of commas, semicolons, and dashes"
+                    ]
+                },
+                {
+                    "name": "Form, Structure, and Sense",
+                    "granular_skills": [
+                        "Subject-verb agreement",
+                        "Verb tense consistency",
+                        "Parallel structure"
+                    ]
+                }
+            ]
+        }
+    ]
+}

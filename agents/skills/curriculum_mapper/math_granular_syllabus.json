@@ -1,0 +1,166 @@
+{
+    "section": "Math",
+    "units": [
+        {
+            "domain": "Algebra",
+            "topics": [
+                {
+                    "name": "Linear equations in one variable",
+                    "granular_skills": [
+                        "Creating models",
+                        "Solving equations",
+                        "Interpreting constants/variables"
+                    ]
+                },
+                {
+                    "name": "Linear equations in two variables",
+                    "granular_skills": [
+                        "Creating models",
+                        "Solving equations",
+                        "Interpreting constants/variables"
+                    ]
+                },
+                {
+                    "name": "Linear functions",
+                    "granular_skills": [
+                        "Evaluating functions",
+                        "Creating models",
+                        "Interpreting graphs and constants"
+                    ]
+                },
+                {
+                    "name": "Systems of two linear equations in two variables",
+                    "granular_skills": [
+                        "Creating models",
+                        "Solving systems",
+                        "Interpreting system components"
+                    ]
+                },
+                {
+                    "name": "Linear inequalities in one or two variables",
+                    "granular_skills": [
+                        "Creating models",
+                        "Solving inequalities",
+                        "Interpreting constraint regions"
+                    ]
+                }
+            ]
+        },
+        {
+            "domain": "Advanced Math",
+            "topics": [
+                {
+                    "name": "Equivalent expressions",
+                    "granular_skills": [
+                        "Simplifying polynomials",
+                        "Rewriting rational expressions"
+                    ]
+                },
+                {
+                    "name": "Nonlinear equations in one variable and systems of equations in two variables",
+                    "granular_skills": [
+                        "Solving quadratics",
+                        "Solving radical equations",
+                        "Solving rational equations"
+                    ]
+                },
+                {
+                    "name": "Nonlinear functions",
+                    "granular_skills": [
+                        "Creating models",
+                        "Graphing parabolas and exponentials",
+                        "Interpreting nonlinear constants"
+                    ]
+                }
+            ]
+        },
+        {
+            "domain": "Problem-Solving and Data Analysis",
+            "topics": [
+                {
+                    "name": "Ratios, rates, proportional relationships, and units",
+                    "granular_skills": [
+                        "Solving proportions",
+                        "Converting units",
+                        "Calculating unit rates"
+                    ]
+                },
+                {
+                    "name": "Percentages",
+                    "granular_skills": [
+                        "Percent increase/decrease",
+                        "Part-to-whole relationships"
+                    ]
+                },
+                {
+                    "name": "One-variable data: Distributions and measures of center and spread",
+                    "granular_skills": [
+                        "Calculating mean/median/mode",
+                        "Interpreting standard deviation"
+                    ]
+                },
+                {
+                    "name": "Two-variable data: Models and scatterplots",
+                    "granular_skills": [
+                        "Estimating line of best fit",
+                        "Predicting values from models"
+                    ]
+                },
+                {
+                    "name": "Probability and conditional probability",
+                    "granular_skills": [
+                        "Calculating independent events",
+                        "Calculating conditional probabilities"
+                    ]
+                },
+                {
+                    "name": "Inference from sample statistics and margin of error",
+                    "granular_skills": [
+                        "Evaluating sample representation",
+                        "Interpreting margin of error"
+                    ]
+                },
+                {
+                    "name": "Evaluating statistical claims: Observational studies and experiments",
+                    "granular_skills": [
+                        "Identifying bias",
+                        "Determining causality vs. correlation"
+                    ]
+                }
+            ]
+        },
+        {
+            "domain": "Geometry and Trigonometry",
+            "topics": [
+                {
+                    "name": "Area and volume",
+                    "granular_skills": [
+                        "Applying volume formulas",
+                        "Calculating surface area"
+                    ]
+                },
+                {
+                    "name": "Lines, angles, and triangles",
+                    "granular_skills": [
+                        "Parallel line theorems",
+                        "Similar triangle properties"
+                    ]
+                },
+                {
+                    "name": "Right triangles and trigonometry",
+                    "granular_skills": [
+                        "Pythagorean theorem",
+                        "Sine, cosine, and tangent ratios"
+                    ]
+                },
+                {
+                    "name": "Circles",
+                    "granular_skills": [
+                        "Equation of a circle",
+                        "Arc length and sector area"
+                    ]
+                }
+            ]
+        }
+    ]
+}
