@@ -1,0 +1,246 @@
+/* Import a modern font */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+/* Global Styles */
+* {
+    font-family: 'Inter', sans-serif !important;
+}
+
+/* Main App Background */
+.stApp {
+    background-color: #5bc0be !important; /* Light teal */
+    color: #FFFFFF;
+}
+
+/* Top Navigation Bar */
+.top-nav {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    margin-bottom: 1.5rem;
+}
+
+.logo {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: white;
+}
+
+.nav-links {
+    display: flex;
+    gap: 2rem;
+    align-items: center;
+}
+
+.nav-links a {
+    color: rgba(255, 255, 255, 0.7);
+    text-decoration: none;
+    font-weight: 500;
+    font-size: 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 2px solid transparent;
+    transition: all 0.2s;
+}
+
+.nav-links a:hover {
+    color: white;
+}
+
+.nav-links a.active {
+    color: white;
+    border-bottom: 2px solid white;
+}
+
+.nav-links a.logout-btn {
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    padding: 0.5rem 1rem;
+    border-radius: 20px;
+    margin-left: 1rem;
+}
+
+.nav-links a.logout-btn:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+}
+
+/* Custom Text Classes */
+.section-title {
+    color: white;
+    font-size: 1.4rem;
+    font-weight: 600;
+    margin-bottom: 1rem;
+    margin-top: 0;
+}
+
+.card-title {
+    color: white;
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+}
+
+/* Typography (Headers and Paragraphs) */
+h1, h2, h3, h4, h5, h6, p, label, span, div {
+    color: #FFFFFF !important;
+}
+
+/* OUTER FRAMES (Master Containers) */
+[data-testid="stVerticalBlockBorderWrapper"] {
+    background: #1A3F4C !important;
+    border: 2px solid #e1ad01 !important;
+    border-radius: 16px !important;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4) !important;
+    padding: 1.5rem !important;
+    margin-bottom: 1.5rem !important;
+}
+
+/* INNER CARDS (Nested Containers) */
+[data-testid="stVerticalBlockBorderWrapper"] [data-testid="stVerticalBlockBorderWrapper"] {
+    background: #15343f !important;
+    border: 1px solid #e1ad01 !important;
+    border-radius: 12px !important;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2) !important;
+    padding: 1rem !important;
+    margin-bottom: 1rem !important;
+}
+
+/* Buttons */
+.stButton > button {
+    background-color: #FFFFFF !important;
+    color: #1c4554 !important;
+    border-radius: 30px !important;
+    border: 2px solid #e1ad01 !important;
+    font-weight: 600 !important;
+    padding: 0.5rem 1.5rem !important;
+    transition: all 0.2s ease;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.stButton > button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+    background-color: #F8F9FA !important;
+    color: #1c4554 !important;
+}
+
+.stButton > button p {
+    color: inherit !important;
+}
+
+/* Primary Button Override */
+.stButton > button[kind="primary"] {
+    background-color: #f7a93b !important; /* Accent yellow/orange */
+    color: #000000 !important;
+}
+
+/* Inputs (Text, Number, Date, Select) */
+div[data-baseweb="input"] > div, 
+div[data-baseweb="select"] > div {
+    background-color: #1c4554 !important;
+    border: 1px solid #e1ad01 !important;
+    border-radius: 8px !important;
+    color: white !important;
+}
+
+div[data-baseweb="input"] input,
+div[data-baseweb="select"] * {
+    color: white !important;
+    background-color: transparent !important;
+}
+
+/* Target the select arrow */
+div[data-baseweb="select"] svg {
+    fill: white !important;
+}
+
+/* Metrics */
+[data-testid="stMetricValue"] {
+    font-size: 2.5rem !important;
+    font-weight: 700 !important;
+    color: #FFFFFF !important;
+}
+
+[data-testid="stMetricLabel"] {
+    font-size: 1rem !important;
+    color: rgba(255, 255, 255, 0.7) !important;
+}
+
+/* Chat Messages */
+[data-testid="stChatMessage"] {
+    background-color: #1f4f61 !important;
+    border-radius: 12px;
+    padding: 1rem;
+    margin-bottom: 1rem;
+    border: 1px solid #e1ad01 !important;
+}
+
+/* User chat message specifically */
+[data-testid="stChatMessage"][data-testid="stChatMessage-user"] {
+    background-color: #2b6a82 !important;
+}
+
+/* Tutor Chat Input Field */
+[data-testid="stChatInput"] {
+    background-color: #E4D5C7 !important;
+    border: 2px solid #e1ad01 !important;
+}
+
+[data-testid="stChatInput"] textarea {
+    color: #000000 !important;
+    background-color: transparent !important;
+}
+
+[data-testid="stChatInput"] button {
+    color: #000000 !important;
+}
+
+[data-testid="stChatInput"] svg {
+    fill: #000000 !important;
+}
+
+/* Fix Streamlit Header (Remove the default white top bar in light mode if any) */
+header[data-testid="stHeader"] {
+    background-color: transparent !important;
+    display: none !important;
+}
+
+/* Expanders */
+.stExpander {
+    background-color: #173743 !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    border-radius: 12px !important;
+}
+
+.stExpander summary p {
+    font-weight: 600 !important;
+}
+
+/* Checkboxes */
+[data-testid="stCheckbox"] label span {
+    color: #ffffff !important;
+}
+
+/* Dataframe header */
+[data-testid="stDataFrame"] {
+    background-color: transparent !important;
+}
+
+[data-testid="stDataFrame"] th {
+    background-color: #173743 !important;
+    color: white !important;
+}
+
+[data-testid="stDataFrame"] td {
+    background-color: #1c4554 !important;
+    color: white !important;
+}
+
+/* Remove default padding at top of app */
+.css-18e3th9 {
+    padding-top: 1rem !important;
+}
+
+.stApp > header {
+    display: none !important;
+}

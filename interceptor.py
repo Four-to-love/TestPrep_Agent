@@ -2,8 +2,22 @@ import sqlite3
 import re
 from datetime import datetime
 from constants import STATES_LIST
+# ==========================================
+# AGENT IMPORTS
+# ==========================================
+from agents.tutor import SyllabusTutorAgent
+from agents.topic_expander import TopicExpanderAgent
 from agents.strategist import StrategistAgent
-from agents.skills.nmsi_calculator.nmsi_calculator import get_state_target
+
+# ==========================================
+# SKILL IMPORTS
+# ==========================================
+from agents.skills.nmsi_calculator.nmsi_calculator import calculate_selection_index, get_state_target
+from agents.skills.curriculum_mapper.scheduler_skill import generate_schedule
+from agents.skills.test_date_calculator.date_engine import calculate_test_date
+
+# Import any other skills here!
+
 
 DB_PATH = 'student_state.db'
 
@@ -117,7 +131,7 @@ def process_secure_request(action_type, student_id, session_token, active_token,
                     "nmsi_cutoff": target_cutoff  # <-- THIS IS THE MISSING KEY!
                 }
             }
-            
+
         except Exception as e:
             return {"status": "error", "message": f"Analytics Database Error: {str(e)}"}
 
@@ -200,5 +214,44 @@ def process_secure_request(action_type, student_id, session_token, active_token,
 
         except Exception as e:
             return {"status": "error", "message": f"Execution Error: {str(e)}"}
+
+# ==========================================
+    # --- NEW: AGENT & SKILL DIRECT ROUTES ---
+    # ==========================================
+    elif action_type == "TUTOR_CHAT":
+        tutor = SyllabusTutorAgent()
+        message = payload.get("message", "")
+        recent_context = payload.get("recent_context", [])
+        return {"status": "success", "data": tutor.answer_question(message, recent_context)}
+
+    elif action_type == "EXPAND_TOPIC":
+        expander = TopicExpanderAgent()
+        topic_name = payload.get("topic_name", "")
+        return {"status": "success", "data": expander.expand_topic(topic_name)}
+
+    elif action_type == "CALCULATE_NMSI":
+        # 1. Grab the scores dictionary from the payload
+        scores = payload.get("scores", {})
+        
+        # 2. Extract the individual numbers (defaulting to 0 if missing)
+        rw_score = scores.get("rw", 0)
+        math_score = scores.get("math", 0)
+        
+        # 3. Pass them as two separate positional arguments, just like the function expects!
+        return {"status": "success", "data": calculate_selection_index(rw_score, math_score)}
+
+    elif action_type == "GET_STATE_TARGET":
+        state_code = payload.get("state", "WA")
+        return {"status": "success", "data": get_state_target(state_code)}
+
+    elif action_type == "CALCULATE_TEST_DATE":
+        # Pass the entire payload as keyword arguments safely
+        payload = payload or {} 
+        return {"status": "success", "data": calculate_test_date(**payload)}
+
+    elif action_type == "GENERATE_SCHEDULE":
+        payload = payload or {}
+        return {"status": "success", "data": generate_schedule(**payload)}
+
 
     return {"status": "error", "message": "Security Alert: Unknown action type."}
