@@ -20,16 +20,16 @@ class StrategistAgent:
         years_until_grad = graduation_year - current_year
 
         if years_until_grad > 2:
-            pacing_strategy = "Foundations (8th/9th). Max 2 hours prep/week. No practice tests yet."
+            pacing_strategy = "Foundations (9th). Max 2 hours prep/week. Test only to make yourself familiar with the test."
             test_frequency = 0
         elif years_until_grad == 2:
-            pacing_strategy = "PSAT/NMSQT Focus (10th). Foundational review with periodic testing."
+            pacing_strategy = "PSAT/NMSQT Focus (10th). Foundational review with regular testing."
             test_frequency = 6
         elif years_until_grad == 1:
             pacing_strategy = "Primary SAT Year (11th). Aggressive review (3-5 hours/week)."
             test_frequency = 4 # <--- Here is your 4-week rule!
         else:
-            pacing_strategy = "Crunch Time (12th). Acceleration Protocol. Focus purely on gaps."
+            pacing_strategy = "Acceleration Protocol. Focus purely on weak areas in each Unit."
             test_frequency = 2
 
         # 2. Pass the new 'test_frequency' to the Math mapper

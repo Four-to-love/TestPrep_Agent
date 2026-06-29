@@ -13,7 +13,8 @@ def create_database():
         CREATE TABLE IF NOT EXISTS students (
             student_id TEXT PRIMARY KEY,
             state_code TEXT,
-            graduation_year INTEGER
+            graduation_year INTEGER,
+            target_test_date TEXT
         )
     ''')
 

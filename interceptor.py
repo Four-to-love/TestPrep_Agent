@@ -15,6 +15,7 @@ from agents.strategist import StrategistAgent
 from agents.skills.nmsi_calculator.nmsi_calculator import calculate_selection_index, get_state_target
 from agents.skills.curriculum_mapper.scheduler_skill import generate_schedule
 from agents.skills.test_date_calculator.date_engine import calculate_test_date
+from agents.skills.syllabus_renderer import render_syllabus_timeline
 
 # Import any other skills here!
 
@@ -37,6 +38,8 @@ def process_secure_request(action_type, student_id, session_token, active_token,
     if action_type == "SAVE_PROFILE":
         state_code = payload.get("state_code")
         grad_year = payload.get("graduation_year")
+        has_test_date = "target_test_date" in payload
+        target_test_date = payload.get("target_test_date")
 
         if state_code not in STATES_LIST:
             return {"status": "error", "message": "Validation Error: Invalid state code."}
@@ -52,18 +55,45 @@ def process_secure_request(action_type, student_id, session_token, active_token,
             conn = sqlite3.connect(DB_PATH)
             c = conn.cursor()
             
-            # THE FIX: Using an Upsert instead of a standard Update
-            c.execute('''
-                INSERT INTO students (student_id, state_code, graduation_year)
-                VALUES (?, ?, ?)
-                ON CONFLICT(student_id) DO UPDATE SET 
-                    state_code=excluded.state_code, 
-                    graduation_year=excluded.graduation_year
-            ''', (student_id, state_code, grad_year))
+            if has_test_date:
+                c.execute('''
+                    INSERT INTO students (student_id, state_code, graduation_year, target_test_date)
+                    VALUES (?, ?, ?, ?)
+                    ON CONFLICT(student_id) DO UPDATE SET 
+                        state_code=excluded.state_code, 
+                        graduation_year=excluded.graduation_year,
+                        target_test_date=excluded.target_test_date
+                ''', (student_id, state_code, grad_year, target_test_date))
+            else:
+                c.execute('''
+                    INSERT INTO students (student_id, state_code, graduation_year)
+                    VALUES (?, ?, ?)
+                    ON CONFLICT(student_id) DO UPDATE SET 
+                        state_code=excluded.state_code, 
+                        graduation_year=excluded.graduation_year
+                ''', (student_id, state_code, grad_year))
             
             conn.commit()
             conn.close()
             return {"status": "success", "message": "Profile updated successfully."}
+        except Exception as e:
+            return {"status": "error", "message": f"Database Error: {str(e)}"}
+
+    elif action_type == "GET_STUDENT":
+        try:
+            conn = sqlite3.connect(DB_PATH)
+            conn.row_factory = sqlite3.Row
+            c = conn.cursor()
+            c.execute("SELECT state_code, graduation_year, target_test_date FROM students WHERE student_id = ?", (student_id,))
+            row = c.fetchone()
+            if not row:
+                c.execute("INSERT INTO students (student_id, state_code, graduation_year, target_test_date) VALUES (?, ?, ?, ?)",
+                          (student_id, "WA", 2028, ""))
+                conn.commit()
+                c.execute("SELECT state_code, graduation_year, target_test_date FROM students WHERE student_id = ?", (student_id,))
+                row = c.fetchone()
+            conn.close()
+            return {"status": "success", "data": dict(row)}
         except Exception as e:
             return {"status": "error", "message": f"Database Error: {str(e)}"}
 
@@ -101,23 +131,59 @@ def process_secure_request(action_type, student_id, session_token, active_token,
             conn.row_factory = sqlite3.Row # This lets us return data as dictionaries
             c = conn.cursor()
             
-            # 1. Get Best Score
-            c.execute("SELECT MAX(sat_total_score) as best_score, date_test_taken FROM practice_scores WHERE student_id = ?", (student_id,))
+            # 1. Get Best Score (highest total score row)
+            c.execute("SELECT sat_total_score as best_score, math_score as best_math, reading_writing_score as best_rw, date_test_taken FROM practice_scores WHERE student_id = ? ORDER BY sat_total_score DESC, id DESC LIMIT 1", (student_id,))
             best_row = c.fetchone()
-            best_score = best_row["best_score"] if best_row["best_score"] else 0
-            best_date = best_row["date_test_taken"] if best_row["best_score"] else "No tests logged"
+            if best_row:
+                best_score = best_row["best_score"] if best_row["best_score"] else 0
+                best_math = best_row["best_math"] if best_row["best_math"] else 0
+                best_rw = best_row["best_rw"] if best_row["best_rw"] else 0
+                best_date = best_row["date_test_taken"] if best_row["date_test_taken"] else "No tests logged"
+            else:
+                best_score = 0
+                best_math = 0
+                best_rw = 0
+                best_date = "No tests logged"
         
             # 2. Get Last 5 Scores
-            c.execute("SELECT date_test_taken as Date, reading_writing_score as RW, math_score as Math, sat_total_score as Total FROM practice_scores WHERE student_id = ? ORDER BY date_test_taken DESC LIMIT 5", (student_id,))
+            c.execute("SELECT date_test_taken as Date, reading_writing_score as RW, math_score as Math, sat_total_score as Total FROM practice_scores WHERE student_id = ? ORDER BY date_test_taken DESC, id DESC LIMIT 5", (student_id,))
             recent_scores = [dict(row) for row in c.fetchall()]
         
-            # 3. Get State for NMSI
-            c.execute("SELECT state_code FROM students WHERE student_id = ?", (student_id,))
+            # 3. Get Student Profile Details
+            c.execute("SELECT state_code, graduation_year, target_test_date FROM students WHERE student_id = ?", (student_id,))
             state_row = c.fetchone()
             state_code = state_row["state_code"] if state_row else "WA"
+            grad_year = state_row["graduation_year"] if state_row else None
+            db_test_date = state_row["target_test_date"] if state_row else None
         
             # Call YOUR NMSI Engine 
             target_cutoff = get_state_target(state_code)
+            
+            # 4. Calculate Pacing Strategy and Focus via Strategist (Zero-Trust Interceptor Execution)
+            overall_focus = ""
+            pacing_strategy = ""
+            if grad_year:
+                # Fetch latest scores for weighting
+                c.execute("SELECT math_score, reading_writing_score FROM practice_scores WHERE student_id = ? ORDER BY date_test_taken DESC, id DESC LIMIT 1", (student_id,))
+                last_score = c.fetchone()
+                last_math = last_score["math_score"] if last_score else 500
+                last_rw = last_score["reading_writing_score"] if last_score else 500
+                
+                # Fetch mastered skills to filter out
+                c.execute("SELECT topic FROM syllabus_progress WHERE student_id = ? AND is_completed = 1", (student_id,))
+                mastered_skills = [row["topic"] for row in c.fetchall()]
+                
+                agent = StrategistAgent()
+                blueprint = agent.generate_adaptive_timeline(
+                    graduation_year=grad_year,
+                    test_date_str=db_test_date,
+                    math_score=last_math,
+                    rw_score=last_rw,
+                    mastered_skills=mastered_skills
+                )
+                if "error" not in blueprint:
+                    overall_focus = blueprint.get("overall_focus", "")
+                    pacing_strategy = blueprint.get("pacing_strategy", "")
             
             conn.close()
             
@@ -125,10 +191,14 @@ def process_secure_request(action_type, student_id, session_token, active_token,
                 "status": "success", 
                 "data": {
                     "best_score": best_score,
+                    "best_math": best_math,
+                    "best_rw": best_rw,
                     "best_date": best_date,
                     "recent_scores": recent_scores,
                     "state_code": state_code,
-                    "nmsi_cutoff": target_cutoff  # <-- THIS IS THE MISSING KEY!
+                    "nmsi_cutoff": target_cutoff,
+                    "overall_focus": overall_focus,
+                    "pacing_strategy": pacing_strategy
                 }
             }
 
@@ -158,23 +228,47 @@ def process_secure_request(action_type, student_id, session_token, active_token,
         except Exception as e:
             return {"status": "error", "message": f"Database Error: {str(e)}"}
 
+    elif action_type == "GET_SYLLABUS":
+        try:
+            conn = sqlite3.connect(DB_PATH)
+            c = conn.cursor()
+            c.execute("SELECT topic, is_completed FROM syllabus_progress WHERE student_id = ?", (student_id,))
+            rows = c.fetchall()
+            conn.close()
+            
+            mastered_topics = [row[0] for row in rows if row[1] == 1]
+            return {"status": "success", "data": mastered_topics}
+        except Exception as e:
+            return {"status": "error", "message": f"Database Error: {str(e)}"}
+
     # --- NEW: Connecting the DB to the Strategist ---
     elif action_type == "GENERATE_PLAN":
         test_date_str = payload.get("test_date")
         
-        if not test_date_str:
-            return {"status": "error", "message": "Validation Error: Target test date is required."}
-            
         try:
             conn = sqlite3.connect(DB_PATH)
             c = conn.cursor()
             
-            # 1. Fetch Profile (Graduation Year)
-            c.execute("SELECT graduation_year FROM students WHERE student_id = ?", (student_id,))
+            # 1. Fetch Profile (Graduation Year & Target Test Date)
+            c.execute("SELECT graduation_year, target_test_date FROM students WHERE student_id = ?", (student_id,))
             profile_row = c.fetchone()
             if not profile_row or not profile_row[0]:
+                 conn.close()
                  return {"status": "error", "message": "No profile found. Please save your graduation year first."}
             grad_year = profile_row[0]
+            db_test_date = profile_row[1]
+            
+            # Determine test_date
+            if not test_date_str:
+                test_date_str = db_test_date
+                
+            if not test_date_str:
+                # Use date_engine calculation
+                calc = calculate_test_date(grad_year)
+                if "error" in calc:
+                    conn.close()
+                    return {"status": "error", "message": calc["error"]}
+                test_date_str = calc["test_date"]
 
             # 2. Fetch Latest Scores for Weighting
             c.execute('''
@@ -252,6 +346,23 @@ def process_secure_request(action_type, student_id, session_token, active_token,
     elif action_type == "GENERATE_SCHEDULE":
         payload = payload or {}
         return {"status": "success", "data": generate_schedule(**payload)}
+
+    elif action_type == "RENDER_SYLLABUS":
+        syllabus_file = payload.get("syllabus_file")
+        marker_class = payload.get("marker_class")
+        key_prefix = payload.get("key_prefix")
+        column_label = payload.get("column_label", "Task")
+        
+        render_syllabus_timeline(
+            syllabus_file=syllabus_file,
+            marker_class=marker_class,
+            key_prefix=key_prefix,
+            student_id=student_id,
+            session_token=session_token,
+            active_token=active_token,
+            column_label=column_label
+        )
+        return {"status": "success"}
 
 
     return {"status": "error", "message": "Security Alert: Unknown action type."}

@@ -1,6 +1,15 @@
 [theme]
-primaryColor = "#0c6893ff"
-backgroundColor = "#FFFFFF"
-secondaryBackgroundColor = "#F4F6F9"
-textColor = "#1E293B"
+primaryColor = "#e1ad01"
+
+# Clean, modern, standard font
 font = "sans serif"
+
+[client]
+# Hides the Streamlit developer options menu in the top right 
+# to make the app feel like a proprietary commercial product.
+toolbarMode = "viewer"
+
+# Since you are building a multi-grade system with separate pages, 
+# you can leave this true to keep the native sidebar navigation, 
+# or set to false if you plan to build custom navigation buttons.
+showSidebarNavigation = true

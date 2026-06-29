@@ -1,0 +1,165 @@
+BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:ics.py - http://git.io/lLljaA
+BEGIN:VEVENT
+DESCRIPTION:Math: • Problem-Solving and Data Analysis: Inference from sample statistics and margin of error - Evaluating sample representation\, • Problem-Solving and Data Analysis: Inference from sample statistics and margin of error - Interpreting margin of error\nReading & Writing: • Expression of Ideas: Transitions - Establishing cause-and-effect flow
+DURATION:P1W
+DTSTART:20261026T000000Z
+SUMMARY:Study Week 18
+UID:91aeed00-5526-47b9-a0a4-a26348172111@91ae.org
+END:VEVENT
+BEGIN:VEVENT
+DESCRIPTION:Math: • Geometry and Trigonometry: Lines\, angles\, and triangles - Parallel line theorems\, • Geometry and Trigonometry: Lines\, angles\, and triangles - Similar triangle properties\nReading & Writing: • Standard English Conventions: Form\, Structure\, and Sense - Subject-verb agreement
+DURATION:P1W
+DTSTART:20261116T000000Z
+SUMMARY:Study Week 21
+UID:24ac2b12-a5a3-461c-8314-23ba48623ffd@24ac.org
+END:VEVENT
+BEGIN:VEVENT
+DESCRIPTION:Math: • Algebra: Linear equations in one variable - Interpreting constants/variables\, • Algebra: Linear equations in two variables - Creating models\nReading & Writing: • Information and Ideas: Central Ideas and Details - Identifying supporting textual details
+DURATION:P1W
+DTSTART:20260706T000000Z
+SUMMARY:Study Week 2
+UID:8fed07cd-68ee-4dc6-9295-9e95b9fff342@8fed.org
+END:VEVENT
+BEGIN:VEVENT
+DESCRIPTION:Math: • Problem-Solving and Data Analysis: Probability and conditional probability - Calculating independent events\, • Problem-Solving and Data Analysis: Probability and conditional probability - Calculating conditional probabilities\nReading & Writing: • Expression of Ideas: Transitions - Selecting logical connectives
+DURATION:P1W
+DTSTART:20261019T000000Z
+SUMMARY:Study Week 17
+UID:3f9b2089-3717-469e-a685-8d97abfee23b@3f9b.org
+END:VEVENT
+BEGIN:VEVENT
+DESCRIPTION:Math: • Problem-Solving and Data Analysis: One-variable data: Distributions and measures of center and spread - Calculating mean/median/mode\, • Problem-Solving and Data Analysis: One-variable data: Distributions and measures of center and spread - Interpreting standard deviation\nReading & Writing: • Expression of Ideas: Rhetorical Synthesis - Combining provided bullet points
+DURATION:P1W
+DTSTART:20261005T000000Z
+SUMMARY:Study Week 15
+UID:1bd79f53-f353-477d-bf7b-75c72a766168@1bd7.org
+END:VEVENT
+BEGIN:VEVENT
+DESCRIPTION:Math: • Problem-Solving and Data Analysis: Ratios\, rates\, proportional relationships\, and units - Converting units\, • Problem-Solving and Data Analysis: Ratios\, rates\, proportional relationships\, and units - Calculating unit rates\nReading & Writing: • Craft and Structure: Cross-Text Connections - Comparing paired passages
+DURATION:P1W
+DTSTART:20260921T000000Z
+SUMMARY:Study Week 13
+UID:53d1f2a6-209f-43c5-a2d9-82f453695c15@53d1.org
+END:VEVENT
+BEGIN:VEVENT
+DESCRIPTION:Math: • Advanced Math: Nonlinear equations in one variable and systems of equations in two variables - Solving radical equations\, • Advanced Math: Nonlinear equations in one variable and systems of equations in two variables - Solving rational equations\nReading & Writing: • Craft and Structure: Words in Context - Analyzing word choice impact
+DURATION:P1W
+DTSTART:20260831T000000Z
+SUMMARY:Study Week 10
+UID:45473506-1ae9-471e-a8c9-5cef6c38e721@4547.org
+END:VEVENT
+BEGIN:VEVENT
+DESCRIPTION:Math: • Advanced Math: Equivalent expressions - Rewriting rational expressions\, • Advanced Math: Nonlinear equations in one variable and systems of equations in two variables - Solving quadratics\nReading & Writing: • Craft and Structure: Words in Context - Deducing high-utility vocabulary
+DURATION:P1W
+DTSTART:20260824T000000Z
+SUMMARY:Study Week 9
+UID:bac1b21e-fbef-4061-b7d3-ec873615e6eb@bac1.org
+END:VEVENT
+BEGIN:VEVENT
+DESCRIPTION:Math: • Algebra: Systems of two linear equations in two variables - Solving systems\, • Algebra: Systems of two linear equations in two variables - Interpreting system components\nReading & Writing: • Information and Ideas: Command of Evidence: Quantitative - Linking data sets to textual claims
+DURATION:P1W
+DTSTART:20260803T000000Z
+SUMMARY:Study Week 6
+UID:cbb70b62-527a-4c5f-bc2c-580fde986950@cbb7.org
+END:VEVENT
+BEGIN:VEVENT
+DESCRIPTION:Math: • Algebra: Linear functions - Interpreting graphs and constants\, • Algebra: Systems of two linear equations in two variables - Creating models\nReading & Writing: • Information and Ideas: Command of Evidence: Quantitative - Interpreting charts and tables
+DURATION:P1W
+DTSTART:20260727T000000Z
+SUMMARY:Study Week 5
+UID:3934ce4a-2f09-4e94-866b-0351378bb2e0@3934.org
+END:VEVENT
+BEGIN:VEVENT
+DESCRIPTION:Math: • Algebra: Linear equations in one variable - Creating models\, • Algebra: Linear equations in one variable - Solving equations\nReading & Writing: • Information and Ideas: Central Ideas and Details - Determining the primary theme
+DURATION:P1W
+DTSTART:20260629T000000Z
+SUMMARY:Study Week 1
+UID:c8ec01ca-e7e5-4cf2-b057-bc98bb595e80@c8ec.org
+END:VEVENT
+BEGIN:VEVENT
+DESCRIPTION:Math: • Algebra: Linear inequalities in one or two variables - Interpreting constraint regions\, • Advanced Math: Equivalent expressions - Simplifying polynomials\nReading & Writing: • Information and Ideas: Inferences - Following logical implications
+DURATION:P1W
+DTSTART:20260817T000000Z
+SUMMARY:Study Week 8
+UID:ed6a73de-d9c2-47b7-b6f7-db12c1b8dd7c@ed6a.org
+END:VEVENT
+BEGIN:VEVENT
+DESCRIPTION:Math: • Algebra: Linear equations in two variables - Solving equations\, • Algebra: Linear equations in two variables - Interpreting constants/variables\nReading & Writing: • Information and Ideas: Command of Evidence: Textual - Selecting quotes to support claims
+DURATION:P1W
+DTSTART:20260713T000000Z
+SUMMARY:Study Week 3
+UID:4ca11a97-6156-48be-ab41-70e6e286f725@4ca1.org
+END:VEVENT
+BEGIN:VEVENT
+DESCRIPTION:Math: • Geometry and Trigonometry: Area and volume - Applying volume formulas\, • Geometry and Trigonometry: Area and volume - Calculating surface area\nReading & Writing: • Standard English Conventions: Boundaries - Proper use of commas\, semicolons\, and dashes
+DURATION:P1W
+DTSTART:20261109T000000Z
+SUMMARY:Study Week 20
+UID:b2848d7f-b96b-4599-a8ef-d1c0ecab2592@b284.org
+END:VEVENT
+BEGIN:VEVENT
+DESCRIPTION:Math: • Geometry and Trigonometry: Circles - Equation of a circle\, • Geometry and Trigonometry: Circles - Arc length and sector area\nReading & Writing: • Standard English Conventions: Form\, Structure\, and Sense - Parallel structure
+DURATION:P1W
+DTSTART:20261130T000000Z
+SUMMARY:Study Week 23
+UID:46e65ff6-ce36-4b08-8dd7-f8eb1d1a03f6@46e6.org
+END:VEVENT
+BEGIN:VEVENT
+DESCRIPTION:Math: • Problem-Solving and Data Analysis: Percentages - Percent increase/decrease\, • Problem-Solving and Data Analysis: Percentages - Part-to-whole relationships\nReading & Writing: • Craft and Structure: Cross-Text Connections - Synthesizing opposing viewpoints
+DURATION:P1W
+DTSTART:20260928T000000Z
+SUMMARY:Study Week 14
+UID:23247843-2fd8-4968-bc74-3c9c9a35ce33@2324.org
+END:VEVENT
+BEGIN:VEVENT
+DESCRIPTION:Math: • Advanced Math: Nonlinear functions - Interpreting nonlinear constants\, • Problem-Solving and Data Analysis: Ratios\, rates\, proportional relationships\, and units - Solving proportions\nReading & Writing: • Craft and Structure: Text Structure and Purpose - Determining the author's primary goal
+DURATION:P1W
+DTSTART:20260914T000000Z
+SUMMARY:Study Week 12
+UID:984593a9-e77f-43b8-aa33-b35c6611a868@9845.org
+END:VEVENT
+BEGIN:VEVENT
+DESCRIPTION:Math: • Algebra: Linear inequalities in one or two variables - Creating models\, • Algebra: Linear inequalities in one or two variables - Solving inequalities\nReading & Writing: • Information and Ideas: Inferences - Drawing unstated conclusions
+DURATION:P1W
+DTSTART:20260810T000000Z
+SUMMARY:Study Week 7
+UID:620704eb-aae4-4496-ae90-d8532da95bf1@6207.org
+END:VEVENT
+BEGIN:VEVENT
+DESCRIPTION:Math: • Advanced Math: Nonlinear functions - Creating models\, • Advanced Math: Nonlinear functions - Graphing parabolas and exponentials\nReading & Writing: • Craft and Structure: Text Structure and Purpose - Identifying rhetorical organization
+DURATION:P1W
+DTSTART:20260907T000000Z
+SUMMARY:Study Week 11
+UID:4d3810e4-2a1e-44b7-acb9-2915a72d9d01@4d38.org
+END:VEVENT
+BEGIN:VEVENT
+DESCRIPTION:Math: • Algebra: Linear functions - Evaluating functions\, • Algebra: Linear functions - Creating models\nReading & Writing: • Information and Ideas: Command of Evidence: Textual - Evaluating hypotheses based on text
+DURATION:P1W
+DTSTART:20260720T000000Z
+SUMMARY:Study Week 4
+UID:f8b468b9-290a-463e-ab7c-6f3483acfe1b@f8b4.org
+END:VEVENT
+BEGIN:VEVENT
+DESCRIPTION:Math: • Problem-Solving and Data Analysis: Evaluating statistical claims: Observational studies and experiments - Identifying bias\, • Problem-Solving and Data Analysis: Evaluating statistical claims: Observational studies and experiments - Determining causality vs. correlation\nReading & Writing: • Standard English Conventions: Boundaries - Linking independent clauses
+DURATION:P1W
+DTSTART:20261102T000000Z
+SUMMARY:Study Week 19
+UID:681cf1cc-333e-4e2f-804c-1c4a7d7eccc8@681c.org
+END:VEVENT
+BEGIN:VEVENT
+DESCRIPTION:Math: • Problem-Solving and Data Analysis: Two-variable data: Models and scatterplots - Estimating line of best fit\, • Problem-Solving and Data Analysis: Two-variable data: Models and scatterplots - Predicting values from models\nReading & Writing: • Expression of Ideas: Rhetorical Synthesis - Achieving specific rhetorical goals
+DURATION:P1W
+DTSTART:20261012T000000Z
+SUMMARY:Study Week 16
+UID:3a575a2f-afde-4ff3-b368-ee003292fa38@3a57.org
+END:VEVENT
+BEGIN:VEVENT
+DESCRIPTION:Math: • Geometry and Trigonometry: Right triangles and trigonometry - Pythagorean theorem\, • Geometry and Trigonometry: Right triangles and trigonometry - Sine\, cosine\, and tangent ratios\nReading & Writing: • Standard English Conventions: Form\, Structure\, and Sense - Verb tense consistency
+DURATION:P1W
+DTSTART:20261123T000000Z
+SUMMARY:Study Week 22
+UID:1dcad007-6889-40c9-8478-072c9eafb929@1dca.org
+END:VEVENT
+END:VCALENDAR

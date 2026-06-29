@@ -1,5 +1,20 @@
-/* Import a modern font */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+/* Import modern and elegant fonts */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@700;800;900&display=swap');
+
+/* ── Global radius token (matches tab rounding) ── */
+:root {
+    --radius: 12px;
+}
+
+.main-title {
+    font-family: 'Playfair Display', serif !important;
+    font-weight: 800 !important;
+    font-size: 2.8rem !important;
+    color: white !important; /* Premium dark slate title */
+    margin-top: -1.5rem !important;
+    margin-bottom: 1.5rem !important;
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.15);
+}
 
 /* Global Styles */
 * {
@@ -8,108 +23,40 @@
 
 /* Main App Background */
 .stApp {
-    background-color: #5bc0be !important; /* Light teal */
+    background: linear-gradient(135deg, #0f242c 0%, #1c4554 100%) !important; /* Premium Dark Teal Gradient */
     color: #FFFFFF;
 }
 
-/* Top Navigation Bar */
-.top-nav {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 0.5rem 0;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-    margin-bottom: 1.5rem;
+/* Sidebar Styling */
+[data-testid="stSidebar"] {
+    background-color: #173743 !important;
+    border-right: 2px solid #e1ad01;
 }
 
-.logo {
-    font-size: 1.5rem;
-    font-weight: 700;
-    color: white;
+/* Sidebar Buttons */
+[data-testid="stSidebar"] .stButton > button {
+    background-color: #f7a93b !important; /* Accent orange/yellow */
+    color: #000000 !important;
+    border: 2px solid #000000 !important;
 }
 
-.nav-links {
-    display: flex;
-    gap: 2rem;
-    align-items: center;
+[data-testid="stSidebar"] .stButton > button:hover {
+    background-color: #ffc470 !important;
+    color: #000000 !important;
 }
 
-.nav-links a {
-    color: rgba(255, 255, 255, 0.7);
-    text-decoration: none;
-    font-weight: 500;
-    font-size: 1rem;
-    padding-bottom: 0.5rem;
-    border-bottom: 2px solid transparent;
-    transition: all 0.2s;
-}
-
-.nav-links a:hover {
-    color: white;
-}
-
-.nav-links a.active {
-    color: white;
-    border-bottom: 2px solid white;
-}
-
-.nav-links a.logout-btn {
-    border: 1px solid rgba(255, 255, 255, 0.3);
-    padding: 0.5rem 1rem;
-    border-radius: 20px;
-    margin-left: 1rem;
-}
-
-.nav-links a.logout-btn:hover {
-    background-color: rgba(255, 255, 255, 0.1);
-}
-
-/* Custom Text Classes */
-.section-title {
-    color: white;
-    font-size: 1.4rem;
-    font-weight: 600;
-    margin-bottom: 1rem;
-    margin-top: 0;
-}
-
-.card-title {
-    color: white;
-    font-size: 1.1rem;
-    font-weight: 600;
-    margin-bottom: 0.5rem;
-}
-
-/* Typography (Headers and Paragraphs) */
+/* Typography (Headers and Paragraphs) - Dark mode default */
 h1, h2, h3, h4, h5, h6, p, label, span, div {
     color: #FFFFFF !important;
 }
 
-/* OUTER FRAMES (Master Containers) */
-[data-testid="stVerticalBlockBorderWrapper"] {
-    background: #1A3F4C !important;
-    border: 2px solid #e1ad01 !important;
-    border-radius: 16px !important;
-    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4) !important;
-    padding: 1.5rem !important;
-    margin-bottom: 1.5rem !important;
-}
 
-/* INNER CARDS (Nested Containers) */
-[data-testid="stVerticalBlockBorderWrapper"] [data-testid="stVerticalBlockBorderWrapper"] {
-    background: #15343f !important;
-    border: 1px solid #e1ad01 !important;
-    border-radius: 12px !important;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2) !important;
-    padding: 1rem !important;
-    margin-bottom: 1rem !important;
-}
 
 /* Buttons */
 .stButton > button {
     background-color: #FFFFFF !important;
     color: #1c4554 !important;
-    border-radius: 30px !important;
+    border-radius: var(--radius) !important;
     border: 2px solid #e1ad01 !important;
     font-weight: 600 !important;
     padding: 0.5rem 1.5rem !important;
@@ -128,6 +75,25 @@ h1, h2, h3, h4, h5, h6, p, label, span, div {
     color: inherit !important;
 }
 
+/* Gold Buttons inside Tabs (Save & Update Schedule) */
+div[data-testid="stTabs"] .stButton > button {
+    background-color: #e1ad01 !important; /* Gold background */
+    color: #FFFFFF !important;            /* White text for contrast */
+    border: 2px solid #e1ad01 !important;
+}
+
+div[data-testid="stTabs"] .stButton > button:hover {
+    background-color: #bfa302 !important; /* Slightly darker gold on hover */
+    border-color: #bfa302 !important;
+    color: #FFFFFF !important;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+}
+
+div[data-testid="stTabs"] .stButton > button p {
+    color: #FFFFFF !important;
+}
+
 /* Primary Button Override */
 .stButton > button[kind="primary"] {
     background-color: #f7a93b !important; /* Accent yellow/orange */
@@ -138,8 +104,8 @@ h1, h2, h3, h4, h5, h6, p, label, span, div {
 div[data-baseweb="input"] > div, 
 div[data-baseweb="select"] > div {
     background-color: #1c4554 !important;
-    border: 1px solid #e1ad01 !important;
-    border-radius: 8px !important;
+    border: 2px solid #e1ad01 !important;
+    border-radius: var(--radius) !important;
     color: white !important;
 }
 
@@ -147,6 +113,70 @@ div[data-baseweb="input"] input,
 div[data-baseweb="select"] * {
     color: white !important;
     background-color: transparent !important;
+}
+
+/* Target Test Date input in Tab 1 */
+div[data-testid="stTabs"] [data-testid="stDateInput"] {
+    border: none !important;
+    background-color: transparent !important;
+    box-shadow: none !important;
+}
+
+div[data-testid="stTabs"] div[data-baseweb="input"] {
+    margin: 0px !important; /* Remove bottom margins to center border with button */
+    border: none !important; /* Remove outer wrapper border */
+    background-color: transparent !important;
+    box-shadow: none !important;
+}
+
+div[data-testid="stTabs"] div[data-baseweb="input"] > div {
+    background-color: #e3f2f4 !important; /* Soft light-light teal background */
+    border: 2px solid #e1ad01 !important;
+    border-radius: 12px !important; /* Matches tab border radius (12px) */
+    color: #1c4554 !important;
+}
+
+div[data-testid="stTabs"] div[data-baseweb="input"] input {
+    color: #1c4554 !important;
+    background-color: transparent !important;
+}
+
+/* Dropdown Calendar Popover styling */
+div[data-baseweb="popover"] {
+    background-color: #1c4554 !important;
+    border: 2px solid #e1ad01 !important;
+    border-radius: var(--radius) !important;
+}
+
+div[data-baseweb="popover"] * {
+    background-color: transparent !important;
+    color: white !important;
+}
+
+div[data-baseweb="popover"] div[role="gridcell"]:hover {
+    background-color: #e1ad01 !important;
+    color: black !important;
+}
+
+div[data-baseweb="popover"] div[aria-selected="true"] {
+    background-color: #e1ad01 !important;
+    color: black !important;
+}
+
+div[data-baseweb="popover"] select {
+    background-color: #1c4554 !important;
+    color: white !important;
+}
+
+div[data-baseweb="popover"] svg {
+    fill: white !important;
+}
+
+/* Target the Save future test date button to be smaller and less round */
+div[data-testid="stTabs"] div[data-testid="stHorizontalBlock"] > div:nth-child(2) .stButton > button {
+    border-radius: var(--radius) !important;
+    font-size: 0.9em !important;   /* Smaller text */
+    padding: 0.3rem 0.8rem !important; /* Smaller padding */
 }
 
 /* Target the select arrow */
@@ -166,6 +196,39 @@ div[data-baseweb="select"] svg {
     color: rgba(255, 255, 255, 0.7) !important;
 }
 
+/* Tabs as Pop-ups - Glassy Style */
+[data-testid="stTabs"] button[data-baseweb="tab"] {
+    background-color: rgba(255, 255, 255, 0.07) !important;
+    border: 1px solid rgba(255, 255, 255, 0.15) !important;
+    border-radius: 12px !important;
+    margin-right: 12px !important;
+    padding: 0.5rem 1.5rem !important;
+    color: rgba(255, 255, 255, 0.7) !important;
+    font-weight: 600 !important;
+    font-size: 1.1rem !important;
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.2) !important;
+    backdrop-filter: blur(10px) !important;
+    -webkit-backdrop-filter: blur(10px) !important;
+    transition: all 0.25s ease-in-out !important;
+}
+
+[data-testid="stTabs"] button[data-baseweb="tab"][aria-selected="true"] {
+    background-color: rgba(225, 173, 1, 0.15) !important; /* Gold glassy overlay */
+    border: 1.5px solid #e1ad01 !important; /* Gold border */
+    color: #FFFFFF !important;
+    box-shadow: 0 8px 32px 0 rgba(225, 173, 1, 0.25) !important;
+}
+
+[data-testid="stTabs"] button[data-baseweb="tab"]:hover {
+    background-color: rgba(255, 255, 255, 0.15) !important;
+    border-color: rgba(255, 255, 255, 0.25) !important;
+    color: #FFFFFF !important;
+}
+
+[data-testid="stTabs"] button[data-baseweb="tab"] p {
+    color: inherit !important;
+}
+
 /* Chat Messages */
 [data-testid="stChatMessage"] {
     background-color: #1f4f61 !important;
@@ -183,7 +246,8 @@ div[data-baseweb="select"] svg {
 /* Tutor Chat Input Field */
 [data-testid="stChatInput"] {
     background-color: #E4D5C7 !important;
-    border: 2px solid #e1ad01 !important;
+    border: none !important; /* Remove duplicate outer border */
+    box-shadow: none !important;
 }
 
 [data-testid="stChatInput"] textarea {
@@ -199,48 +263,356 @@ div[data-baseweb="select"] svg {
     fill: #000000 !important;
 }
 
-/* Fix Streamlit Header (Remove the default white top bar in light mode if any) */
-header[data-testid="stHeader"] {
-    background-color: transparent !important;
-    display: none !important;
-}
-
-/* Expanders */
-.stExpander {
-    background-color: #173743 !important;
-    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+/* Dataframe & Table styling */
+[data-testid="stDataFrame"], [data-testid="stTable"] {
+    background-color: #dce4dd !important; /* Sage green background */
+    border: 3px solid #e1ad01 !important; /* Thick mustard border */
     border-radius: 12px !important;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6) !important; /* Strong shadow */
+    overflow: hidden !important;
 }
 
-.stExpander summary p {
-    font-weight: 600 !important;
+/* Ensure table fills width */
+[data-testid="stTable"] > div > table {
+    width: 100% !important; 
+    table-layout: fixed !important;
 }
 
-/* Checkboxes */
-[data-testid="stCheckbox"] label span {
-    color: #ffffff !important;
+/* Force text wrapping and width for table cells */
+[data-testid="stTable"] th, [data-testid="stTable"] td {
+    white-space: pre-wrap !important; /* Support newlines to stack week number and dates */
+    word-wrap: break-word !important;
+    padding: 0.4rem 0.8rem !important; /* Slightly tighter cell padding */
+    font-size: 0.75rem !important;    /* Smaller font for schedule */
+    font-weight: normal !important;
+    color: black !important;
 }
 
-/* Dataframe header */
-[data-testid="stDataFrame"] {
+/* Make the index column (Week) narrow */
+[data-testid="stTable"] th:first-child {
+    width: 15% !important;
+}
+
+[data-testid="stTable"] td {
+    width: 42.5% !important; /* Split the remaining 85% evenly between Math and R&W */
+}
+
+/* Headers */
+[data-testid="stDataFrame"] th, [data-testid="stTable"] th {
+    background-color: rgba(255,255,255,0.4) !important; 
+    color: black !important;
+    border: 1px solid rgba(0, 0, 0, 0.1) !important; 
+}
+
+/* Table Data Cells */
+[data-testid="stTable"] td {
+    white-space: pre-wrap !important;
     background-color: transparent !important;
+    border: 1px solid rgba(0, 0, 0, 0.1) !important;
 }
 
-[data-testid="stDataFrame"] th {
-    background-color: #173743 !important;
-    color: white !important;
+/* Force ALL text inside the table to be black and smaller */
+[data-testid="stTable"] * {
+    color: black !important;
+    font-size: 0.75rem !important;
 }
 
 [data-testid="stDataFrame"] td {
-    background-color: #1c4554 !important;
+    background-color: transparent !important;
     color: white !important;
 }
 
-/* Remove default padding at top of app */
-.css-18e3th9 {
-    padding-top: 1rem !important;
+/* Force table index column to be narrow and wrap newlines */
+[data-testid="stTable"] th:first-child {
+    min-width: 110px !important;
+    width: 120px !important;
+    white-space: pre-wrap !important;
+}
+
+/* Sidebar Toggle Buttons (Make highly visible) */
+[data-testid="collapsedControl"] {
+    background-color: #e1ad01 !important;
+    border-radius: 0 8px 8px 0 !important;
+    box-shadow: 2px 2px 10px rgba(0,0,0,0.5) !important;
+    opacity: 1 !important;
+    top: 20px !important; /* Move down slightly so it's not hugging the very top edge */
+}
+
+[data-testid="collapsedControl"] svg {
+    fill: #000000 !important;
+    width: 32px !important;
+    height: 32px !important;
+}
+
+[data-testid="collapsedControl"]:hover {
+    background-color: #ffd085 !important;
+}
+
+/* Fix Streamlit Header (Make transparent but DO NOT hide it) */
+header[data-testid="stHeader"] {
+    background-color: transparent !important;
 }
 
 .stApp > header {
-    display: none !important;
+    background-color: transparent !important;
+}
+
+/* Style Fragment Containers (Simulator and Chat Cards) */
+div[data-testid="stFragment"] {
+    background-color: #15343f !important;
+    border: 3px solid #e1ad01 !important;
+    border-radius: 12px !important;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.3) !important;
+    padding: 1rem !important; /* give it some breathing room inside */
+    margin-bottom: 1.5rem !important;
+}
+
+/* Ensure inner elements of the fragment don't override the background */
+div[data-testid="stFragment"] > div {
+    background-color: transparent !important;
+}
+
+/* Shrink Slider Fonts in the Simulator */
+[data-testid="stSlider"] label p {
+    font-size: 0.85rem !important;
+    font-weight: 500 !important;
+    color: rgba(255, 255, 255, 0.7) !important;
+}
+
+/* Learning Timeline (Math & Reading) Custom Table Container */
+div[data-testid="stTabs"] div[data-testid="stVerticalBlockBorderWrapper"]:has(.math-timeline-marker),
+div[data-testid="stTabs"] div[data-testid="stVerticalBlock"] div[data-testid="stVerticalBlock"]:has(.math-timeline-marker),
+div[data-testid="stTabs"] div[data-testid="stVerticalBlockBorderWrapper"]:has(.rw-timeline-marker),
+div[data-testid="stTabs"] div[data-testid="stVerticalBlock"] div[data-testid="stVerticalBlock"]:has(.rw-timeline-marker) {
+    background-color: white !important; /* White background */
+    border: 3px solid #e1ad01 !important;
+    border-radius: 12px !important;
+    padding: 1rem !important;
+}
+
+/* Shrink the vertical gap between rows in the timeline table */
+div[data-testid="stTabs"] div:has(> .math-timeline-marker) div[data-testid="stVerticalBlock"],
+div[data-testid="stTabs"] div:has(> .rw-timeline-marker) div[data-testid="stVerticalBlock"] {
+    gap: 0px !important;
+}
+
+/* Force text inside the Oatmeal containers to be black */
+div[data-testid="stTabs"] div[data-testid="stVerticalBlockBorderWrapper"]:has(.math-timeline-marker) span,
+div[data-testid="stTabs"] div[data-testid="stVerticalBlockBorderWrapper"]:has(.math-timeline-marker) p,
+div[data-testid="stTabs"] div[data-testid="stVerticalBlockBorderWrapper"]:has(.math-timeline-marker) label,
+div[data-testid="stTabs"] div[data-testid="stVerticalBlock"] div[data-testid="stVerticalBlock"]:has(.math-timeline-marker) span,
+div[data-testid="stTabs"] div[data-testid="stVerticalBlock"] div[data-testid="stVerticalBlock"]:has(.math-timeline-marker) p,
+div[data-testid="stTabs"] div[data-testid="stVerticalBlock"] div[data-testid="stVerticalBlock"]:has(.math-timeline-marker) label,
+div[data-testid="stTabs"] div[data-testid="stVerticalBlockBorderWrapper"]:has(.rw-timeline-marker) span,
+div[data-testid="stTabs"] div[data-testid="stVerticalBlockBorderWrapper"]:has(.rw-timeline-marker) p,
+div[data-testid="stTabs"] div[data-testid="stVerticalBlockBorderWrapper"]:has(.rw-timeline-marker) label,
+div[data-testid="stTabs"] div[data-testid="stVerticalBlock"] div[data-testid="stVerticalBlock"]:has(.rw-timeline-marker) span,
+div[data-testid="stTabs"] div[data-testid="stVerticalBlock"] div[data-testid="stVerticalBlock"]:has(.rw-timeline-marker) p,
+div[data-testid="stTabs"] div[data-testid="stVerticalBlock"] div[data-testid="stVerticalBlock"]:has(.rw-timeline-marker) label {
+    color: black !important;
+}
+
+
+/* Remove column gaps in the timeline tables to make the grid borders line up */
+div[data-testid="stTabs"] div[data-testid="stHorizontalBlock"] {
+    gap: 0px !important;
+}
+
+/* Style all column cells in the timeline tables */
+div[data-testid="stTabs"] div[data-testid="stHorizontalBlock"] > div {
+    border-bottom: none !important; /* Removed cell lines */
+    border-right: none !important;  /* Removed cell lines */
+    padding: 0px !important;
+    display: flex !important;
+    align-items: stretch !important; /* Force equal height cells */
+    background-color: transparent;
+}
+
+/* Vertically center the date input and save button columns in tab1 */
+div[data-testid="stTabs"] div[data-testid="stHorizontalBlock"]:has(div[data-baseweb="input"]) > div {
+    align-items: center !important;
+}
+
+/* Remove right border on the last column (checkbox column) */
+div[data-testid="stTabs"] div[data-testid="stHorizontalBlock"] > div:last-child {
+    border-right: none !important;
+    padding: 2px !important; /* Extremely tight padding to fit text */
+    justify-content: center !important;
+    align-items: center !important;
+}
+
+/* Force checkboxes and all their intermediate Streamlit wrappers inside the last column to be perfectly centered by width and height */
+div[data-testid="stTabs"] div[data-testid="stHorizontalBlock"] > div:last-child,
+div[data-testid="stTabs"] div[data-testid="stHorizontalBlock"] > div:last-child > div,
+div[data-testid="stTabs"] div[data-testid="stHorizontalBlock"] > div:last-child div[data-testid="element-container"],
+div[data-testid="stTabs"] div[data-testid="stHorizontalBlock"] > div:last-child div[data-testid="stCheckbox"],
+div[data-testid="stTabs"] div[data-testid="stHorizontalBlock"] > div:last-child div[data-testid="stCheckbox"] > label {
+    display: flex !important;
+    justify-content: center !important;
+    align-items: center !important;
+    margin: 0px !important;
+    padding: 0px !important;
+    width: 100% !important;
+    height: 100% !important;
+}
+
+/* Header row columns get a gold bottom border instead of gray */
+div[data-testid="stTabs"] div:has(> .math-timeline-marker) > div[data-testid="stHorizontalBlock"]:first-of-type > div,
+div[data-testid="stTabs"] div:has(> .rw-timeline-marker) > div[data-testid="stHorizontalBlock"]:first-of-type > div {
+    border-bottom: 2px solid #e1ad01 !important;
+}
+
+/* Mastered Row continuous background */
+div[data-testid="stTabs"] div[data-testid="stHorizontalBlock"]:has(div[data-mastered="true"]) > div {
+    background-color: #f0f4f1 !important; /* Continuous Sage Green background */
+}
+
+/* Header Text Styling */
+.timeline-header {
+    font-weight: 700;
+    color: black !important;
+    font-size: 1.05em;
+    padding: 4px 8px !important; /* Tight header padding */
+    width: 100%;
+    height: 100% !important; /* Take full height of container */
+    margin: 0 !important;
+    border-bottom: none !important;
+    border-right: none !important;
+    display: flex !important;
+    justify-content: center !important; /* Center headers horizontally */
+    align-items: center !important; /* Center headers vertically */
+    text-align: center !important;
+}
+
+/* Body Cell Text Styling */
+.timeline-grid {
+    padding: 2px 8px !important; /* Shrink body padding to only fit the text */
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center; /* Center text vertically */
+}
+
+
+
+/* Color checked Streamlit checkboxes green */
+div[data-testid="stCheckbox"] input[type="checkbox"]:checked + div,
+div[data-testid="stCheckbox"] [role="checkbox"][aria-checked="true"],
+div[data-testid="stCheckbox"] [role="checkbox"][aria-checked="true"] > div,
+div[data-testid="stCheckbox"] div[class*="checked"] {
+    background-color: #2ecc71 !important;
+    border-color: #2ecc71 !important;
+}
+
+/* Style the NMSI Simulator container to match other card sizes and colors */
+div[data-testid="column"] div[data-testid="stVerticalBlockBorderWrapper"]:has(.simulator-marker),
+div[data-testid="column"] div[data-testid="stVerticalBlock"] div[data-testid="stVerticalBlock"]:has(.simulator-marker) {
+    background-color: #15343f !important;
+    border: 3px solid #e1ad01 !important;
+    border-radius: 12px !important;
+    padding: 1.2rem !important; /* SNUG padding */
+    box-shadow: 0 4px 15px rgba(0,0,0,0.3) !important;
+    margin-bottom: 1.2rem !important;
+}
+
+/* Lower slider vertical spacing and layout gaps inside the simulator card */
+div[data-testid="stVerticalBlockBorderWrapper"]:has(.simulator-marker) div[data-testid="stVerticalBlock"] {
+    gap: 4px !important;
+}
+
+div[data-testid="stVerticalBlockBorderWrapper"]:has(.simulator-marker) [data-testid="stSlider"] {
+    margin-top: -12px !important;
+    margin-bottom: -10px !important;
+}
+
+/* Make simulated index score metric match best score size (1.8rem) and styling */
+div[data-testid="stVerticalBlockBorderWrapper"]:has(.simulator-marker) [data-testid="stMetricValue"] {
+    font-size: 1.8rem !important;
+    font-weight: 700 !important;
+    color: #e1ad01 !important; /* Gold metric color */
+    margin-top: -8px !important;
+}
+
+div[data-testid="stVerticalBlockBorderWrapper"]:has(.simulator-marker) [data-testid="stMetricLabel"] {
+    font-size: 0.85rem !important;
+    color: rgba(255, 255, 255, 0.7) !important;
+}
+
+/* Make the save test date button circular */
+div[data-testid="stTabs"] div[data-testid="stHorizontalBlock"]:has(div[data-baseweb="input"]) > div:nth-child(3) .stButton > button {
+    width: 38px !important;
+    height: 38px !important;
+    min-width: 38px !important;
+    max-width: 38px !important;
+    border-radius: 50% !important; /* Force a perfect circle */
+    padding: 0px !important;
+    display: flex !important;
+    justify-content: center !important;
+    align-items: center !important;
+    font-size: 1.1rem !important;
+    border: 2px solid #e1ad01 !important;
+    background-color: #FFFFFF !important; /* Gold contrasting white background */
+    color: #1c4554 !important;
+    margin: 0px !important;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1) !important;
+    transition: all 0.2s ease-in-out !important;
+}
+
+div[data-testid="stTabs"] div[data-testid="stHorizontalBlock"]:has(div[data-baseweb="input"]) > div:nth-child(3) .stButton > button:hover {
+    background-color: #f7a93b !important; /* Gold hover color */
+    border-color: #f7a93b !important;
+    color: #000000 !important;
+    transform: scale(1.08) !important;
+    box-shadow: 0 6px 12px rgba(0,0,0,0.2) !important;
+}
+
+/* Custom User Chat Message Box */
+div[data-testid="element-container"]:has(.chat-message-marker-user) {
+    background-color: rgba(255, 255, 255, 0.06) !important;
+    border: 1px solid rgba(255, 255, 255, 0.12) !important;
+    border-radius: var(--radius) !important;
+    padding: 0.7rem !important;
+    margin-left: 40px !important;
+    margin-bottom: 0.6rem !important;
+}
+
+/* Custom Assistant Chat Message Box */
+div[data-testid="element-container"]:has(.chat-message-marker-assistant) {
+    background-color: rgba(255, 255, 255, 0.02) !important;
+    border: 1px solid rgba(255, 255, 255, 0.06) !important;
+    border-radius: var(--radius) !important;
+    padding: 0.7rem !important;
+    margin-right: 40px !important;
+    margin-bottom: 0.6rem !important;
+}
+
+/* Ensure no bold text or header sizing is applied within chat message boxes */
+div[data-testid="element-container"]:has(.chat-message-marker-user) *,
+div[data-testid="element-container"]:has(.chat-message-marker-assistant) * {
+    font-weight: 400 !important;
+    font-size: 0.92rem !important;
+    line-height: 1.4 !important;
+    font-family: inherit !important;
+}
+
+/* ── Schedule-tab: white buttons with dark-teal text ── */
+div[data-testid="stTabs"] .stButton > button,
+div[data-testid="stTabs"] .stButton > button:hover,
+div[data-testid="stTabs"] .stDownloadButton > button,
+div[data-testid="stTabs"] .stDownloadButton > button:hover {
+    background-color: #FFFFFF !important;
+    color: #0f242c !important;
+    border: 2px solid #1c4554 !important;
+}
+
+div[data-testid="stTabs"] .stButton > button p,
+div[data-testid="stTabs"] .stDownloadButton > button p {
+    color: #0f242c !important;
+}
+
+/* ── Date input text: dark teal ── */
+div[data-testid="stTabs"] input[type="text"],
+div[data-testid="stTabs"] .stDateInput input {
+    color: #0f242c !important;
+    background-color: #FFFFFF !important;
 }
