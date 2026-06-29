@@ -8,7 +8,7 @@ from interceptor import process_secure_request
 from constants import STATES_LIST
 from agents.skills.calendar_export.export_ics import export_schedule_to_ics
 
-st.set_page_config(page_title="TestPrep_Agent", layout="wide", initial_sidebar_state="collapsed")
+st.set_page_config(page_title="TestPrep_Agent", layout="wide", initial_sidebar_state="collapsed", menu_items={})
 
 def load_css(file_name):
     dir_path = os.path.dirname(__file__)
@@ -86,8 +86,45 @@ def build_schedule_from_db():
 # --- HEADER ---
 # Removed placeholder image to utilize page space for tabs
 
-# --- LEFT PANEL (Slide-in Sidebar) ---
-with st.sidebar:
+# --- LEFT PANEL (Floating Popover) ---
+floating_left_panel_css = """
+<style>
+    /* Hide the native sidebar toggle arrow entirely */
+    [data-testid="collapsedControl"] {
+        display: none !important;
+    }
+
+    /* Pin the left panel popover to the bottom-left corner */
+    [data-testid="stPopover"]:first-of-type {
+        position: fixed;
+        bottom: 0px !important;
+        left: 40px !important;
+        right: auto !important;
+        width: 300px !important;
+        z-index: 9998;
+    }
+
+    /* Style the trigger button to look like a gold docked bar (flat bottom, rounded top) */
+    [data-testid="stPopover"]:first-of-type > button {
+        border-radius: 12px 12px 0px 0px !important;
+        height: 45px;
+        width: 100% !important;
+        box-shadow: 0 -4px 15px rgba(0,0,0,0.15) !important;
+        background-color: #e1ad01 !important;
+        color: #15343f !important;
+        font-weight: bold !important;
+        border: none !important;
+    }
+
+    [data-testid="stPopover"]:first-of-type > button:hover {
+        background-color: #cfa001 !important;
+        color: #15343f !important;
+    }
+</style>
+"""
+st.markdown(floating_left_panel_css, unsafe_allow_html=True)
+
+with st.popover("⚙️ Profile & Scores"):
     st.header("Student Profile")
     saved_state = st.session_state.student_profile.get("state_code", "WA")
     state_idx = STATES_LIST.index(saved_state) if saved_state in STATES_LIST else 0

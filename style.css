@@ -1,11 +1,6 @@
 /* Import modern and elegant fonts */
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@700;800;900&display=swap');
 
-/* ── Global radius token (matches tab rounding) ── */
-:root {
-    --radius: 12px;
-}
-
 .main-title {
     font-family: 'Playfair Display', serif !important;
     font-weight: 800 !important;
@@ -21,28 +16,30 @@
     font-family: 'Inter', sans-serif !important;
 }
 
+/* ── Global corner-radius token — change one number to restyle everything ── */
+.stApp, .stApp * {
+    --radius: 12px;
+}
+
+
 /* Main App Background */
 .stApp {
     background: linear-gradient(135deg, #0f242c 0%, #1c4554 100%) !important; /* Premium Dark Teal Gradient */
     color: #FFFFFF;
 }
 
-/* Sidebar Styling */
+/* Sidebar - hidden, replaced by floating popover panel */
 [data-testid="stSidebar"] {
-    background-color: #173743 !important;
-    border-right: 2px solid #e1ad01;
+    display: none !important;
 }
 
-/* Sidebar Buttons */
+/* Sidebar Buttons - hidden, replaced by floating popover panel */
 [data-testid="stSidebar"] .stButton > button {
-    background-color: #f7a93b !important; /* Accent orange/yellow */
-    color: #000000 !important;
-    border: 2px solid #000000 !important;
+    display: none !important;
 }
 
 [data-testid="stSidebar"] .stButton > button:hover {
-    background-color: #ffc470 !important;
-    color: #000000 !important;
+    display: none !important;
 }
 
 /* Typography (Headers and Paragraphs) - Dark mode default */
@@ -56,7 +53,7 @@ h1, h2, h3, h4, h5, h6, p, label, span, div {
 .stButton > button {
     background-color: #FFFFFF !important;
     color: #1c4554 !important;
-    border-radius: var(--radius) !important;
+    border-radius: 30px !important;
     border: 2px solid #e1ad01 !important;
     font-weight: 600 !important;
     padding: 0.5rem 1.5rem !important;
@@ -132,7 +129,7 @@ div[data-testid="stTabs"] div[data-baseweb="input"] {
 div[data-testid="stTabs"] div[data-baseweb="input"] > div {
     background-color: #e3f2f4 !important; /* Soft light-light teal background */
     border: 2px solid #e1ad01 !important;
-    border-radius: 12px !important; /* Matches tab border radius (12px) */
+    border-radius: var(--radius) !important;
     color: #1c4554 !important;
 }
 
@@ -200,7 +197,7 @@ div[data-baseweb="select"] svg {
 [data-testid="stTabs"] button[data-baseweb="tab"] {
     background-color: rgba(255, 255, 255, 0.07) !important;
     border: 1px solid rgba(255, 255, 255, 0.15) !important;
-    border-radius: 12px !important;
+    border-radius: var(--radius) !important;
     margin-right: 12px !important;
     padding: 0.5rem 1.5rem !important;
     color: rgba(255, 255, 255, 0.7) !important;
@@ -232,7 +229,7 @@ div[data-baseweb="select"] svg {
 /* Chat Messages */
 [data-testid="stChatMessage"] {
     background-color: #1f4f61 !important;
-    border-radius: 12px;
+    border-radius: var(--radius);
     padding: 1rem;
     margin-bottom: 1rem;
     border: 1px solid #e1ad01 !important;
@@ -267,7 +264,7 @@ div[data-baseweb="select"] svg {
 [data-testid="stDataFrame"], [data-testid="stTable"] {
     background-color: #dce4dd !important; /* Sage green background */
     border: 3px solid #e1ad01 !important; /* Thick mustard border */
-    border-radius: 12px !important;
+    border-radius: var(--radius) !important;
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6) !important; /* Strong shadow */
     overflow: hidden !important;
 }
@@ -329,23 +326,9 @@ div[data-baseweb="select"] svg {
     white-space: pre-wrap !important;
 }
 
-/* Sidebar Toggle Buttons (Make highly visible) */
+/* Sidebar Toggle Buttons - hidden, sidebar replaced by floating popover */
 [data-testid="collapsedControl"] {
-    background-color: #e1ad01 !important;
-    border-radius: 0 8px 8px 0 !important;
-    box-shadow: 2px 2px 10px rgba(0,0,0,0.5) !important;
-    opacity: 1 !important;
-    top: 20px !important; /* Move down slightly so it's not hugging the very top edge */
-}
-
-[data-testid="collapsedControl"] svg {
-    fill: #000000 !important;
-    width: 32px !important;
-    height: 32px !important;
-}
-
-[data-testid="collapsedControl"]:hover {
-    background-color: #ffd085 !important;
+    display: none !important;
 }
 
 /* Fix Streamlit Header (Make transparent but DO NOT hide it) */
@@ -361,7 +344,7 @@ header[data-testid="stHeader"] {
 div[data-testid="stFragment"] {
     background-color: #15343f !important;
     border: 3px solid #e1ad01 !important;
-    border-radius: 12px !important;
+    border-radius: var(--radius) !important;
     box-shadow: 0 4px 15px rgba(0,0,0,0.3) !important;
     padding: 1rem !important; /* give it some breathing room inside */
     margin-bottom: 1.5rem !important;
@@ -386,7 +369,7 @@ div[data-testid="stTabs"] div[data-testid="stVerticalBlockBorderWrapper"]:has(.r
 div[data-testid="stTabs"] div[data-testid="stVerticalBlock"] div[data-testid="stVerticalBlock"]:has(.rw-timeline-marker) {
     background-color: white !important; /* White background */
     border: 3px solid #e1ad01 !important;
-    border-radius: 12px !important;
+    border-radius: var(--radius) !important;
     padding: 1rem !important;
 }
 
@@ -509,7 +492,7 @@ div[data-testid="column"] div[data-testid="stVerticalBlockBorderWrapper"]:has(.s
 div[data-testid="column"] div[data-testid="stVerticalBlock"] div[data-testid="stVerticalBlock"]:has(.simulator-marker) {
     background-color: #15343f !important;
     border: 3px solid #e1ad01 !important;
-    border-radius: 12px !important;
+    border-radius: var(--radius) !important;
     padding: 1.2rem !important; /* SNUG padding */
     box-shadow: 0 4px 15px rgba(0,0,0,0.3) !important;
     margin-bottom: 1.2rem !important;

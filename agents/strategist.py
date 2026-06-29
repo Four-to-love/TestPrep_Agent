@@ -21,7 +21,7 @@ class StrategistAgent:
 
         if years_until_grad > 2:
             pacing_strategy = "Foundations (9th). Max 2 hours prep/week. Test only to make yourself familiar with the test."
-            test_frequency = 0
+            test_frequency = 15
         elif years_until_grad == 2:
             pacing_strategy = "PSAT/NMSQT Focus (10th). Foundational review with regular testing."
             test_frequency = 6
