@@ -1,8 +1,11 @@
 [theme]
-primaryColor = "#e1ad01"
-
-# Clean, modern, standard font
+primaryColor = "#4E8773"
+backgroundColor = "#FAFAF9"
+secondaryBackgroundColor = "#EDF1EE"
+textColor = "#2F3E46"
 font = "sans serif"
+
+
 
 [client]
 # Hides the Streamlit developer options menu in the top right 

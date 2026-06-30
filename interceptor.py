@@ -16,11 +16,13 @@ from agents.skills.nmsi_calculator.nmsi_calculator import calculate_selection_in
 from agents.skills.curriculum_mapper.scheduler_skill import generate_schedule
 from agents.skills.test_date_calculator.date_engine import calculate_test_date
 from agents.skills.syllabus_renderer import render_syllabus_timeline
+from agents.skills.calendar_export.export_ics import export_schedule_to_ics
 
 # Import any other skills here!
 
 
-DB_PATH = 'student_state.db'
+import os
+DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'student_state.db')
 
 def process_secure_request(action_type, student_id, session_token, active_token, payload):
     """
@@ -146,7 +148,7 @@ def process_secure_request(action_type, student_id, session_token, active_token,
                 best_date = "No tests logged"
         
             # 2. Get Last 5 Scores
-            c.execute("SELECT date_test_taken as Date, reading_writing_score as RW, math_score as Math, sat_total_score as Total FROM practice_scores WHERE student_id = ? ORDER BY date_test_taken DESC, id DESC LIMIT 5", (student_id,))
+            c.execute("SELECT date_test_taken as Date, reading_writing_score as RW, math_score as Math, sat_total_score as Total FROM practice_scores WHERE student_id = ? ORDER BY id DESC LIMIT 5", (student_id,))
             recent_scores = [dict(row) for row in c.fetchall()]
         
             # 3. Get Student Profile Details
@@ -164,7 +166,7 @@ def process_secure_request(action_type, student_id, session_token, active_token,
             pacing_strategy = ""
             if grad_year:
                 # Fetch latest scores for weighting
-                c.execute("SELECT math_score, reading_writing_score FROM practice_scores WHERE student_id = ? ORDER BY date_test_taken DESC, id DESC LIMIT 1", (student_id,))
+                c.execute("SELECT math_score, reading_writing_score FROM practice_scores WHERE student_id = ? ORDER BY id DESC LIMIT 1", (student_id,))
                 last_score = c.fetchone()
                 last_math = last_score["math_score"] if last_score else 500
                 last_rw = last_score["reading_writing_score"] if last_score else 500
@@ -363,6 +365,16 @@ def process_secure_request(action_type, student_id, session_token, active_token,
             column_label=column_label
         )
         return {"status": "success"}
+
+    elif action_type == "EXPORT_ICS":
+        schedule_df = payload.get("schedule_df")
+        if schedule_df is None:
+            return {"status": "error", "message": "Validation Error: schedule_df is required."}
+        try:
+            ics_path = export_schedule_to_ics(schedule_df)
+            return {"status": "success", "data": {"ics_path": ics_path}}
+        except Exception as e:
+            return {"status": "error", "message": f"ICS Export Error: {str(e)}"}
 
 
     return {"status": "error", "message": "Security Alert: Unknown action type."}
