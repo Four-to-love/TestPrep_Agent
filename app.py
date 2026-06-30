@@ -18,6 +18,14 @@ ACTIVE_TOKEN = "valid_token"
 
 if "chat_history" not in st.session_state:
     st.session_state.chat_history = []
+if "schedule_summary" not in st.session_state:
+    st.session_state.schedule_summary = ""
+if "math_summary" not in st.session_state:
+    st.session_state.math_summary = ""
+if "rw_summary" not in st.session_state:
+    st.session_state.rw_summary = ""
+if "tutor_summary" not in st.session_state:
+    st.session_state.tutor_summary = ""
 
 # Load student profile on startup via secure interceptor request
 if "student_profile" not in st.session_state:
@@ -32,9 +40,13 @@ def build_schedule_from_db():
     plan_resp = process_secure_request("GENERATE_PLAN", CURRENT_STUDENT_ID, SESSION_TOKEN, ACTIVE_TOKEN, {})
     if plan_resp["status"] == "success":
         plan_data = plan_resp.get("data", {})
-        # Stash focus and pacing strategy in session state
+        # Stash focus, pacing strategy, and narrative summaries in session state
         st.session_state.overall_focus = plan_data.get("overall_focus", "")
         st.session_state.pacing_strategy = plan_data.get("pacing_strategy", "")
+        st.session_state.schedule_summary = plan_data.get("schedule_summary", "")
+        st.session_state.math_summary = plan_data.get("math_summary", "")
+        st.session_state.rw_summary = plan_data.get("rw_summary", "")
+        st.session_state.tutor_summary = plan_data.get("tutor_summary", "")
         
         if "schedule_error" in st.session_state:
             del st.session_state.schedule_error
@@ -55,11 +67,17 @@ def build_schedule_from_db():
                             
             for w_num in sorted(weeks.keys()):
                 week_start_date = start_date + datetime.timedelta(days=(w_num-1)*7)
-                math_str = "\n• ".join(weeks[w_num]['Math Tasks']) if weeks[w_num]['Math Tasks'] else "You finished the curriculum. Now practice the most hard parts."
-                if weeks[w_num]['Math Tasks']: math_str = "• " + math_str
+                math_tasks = weeks[w_num]['Math Tasks']
+                if math_tasks:
+                    math_str = "\n".join(f"{idx+1}. {task}" for idx, task in enumerate(math_tasks))
+                else:
+                    math_str = "You finished the curriculum. Now practice the most hard parts."
                 
-                rw_str = "\n• ".join(weeks[w_num]['Reading & Writing Tasks']) if weeks[w_num]['Reading & Writing Tasks'] else "You finished the curriculum. Now practice the most hard parts."
-                if weeks[w_num]['Reading & Writing Tasks']: rw_str = "• " + rw_str
+                rw_tasks = weeks[w_num]['Reading & Writing Tasks']
+                if rw_tasks:
+                    rw_str = "\n".join(f"{idx+1}. {task}" for idx, task in enumerate(rw_tasks))
+                else:
+                    rw_str = "You finished the curriculum. Now practice the most hard parts."
                 
                 rows.append({
                     "Week": f"Week {w_num}\n{week_start_date.strftime('%B, %d')}",
@@ -139,6 +157,14 @@ center_col, right_col = st.columns([2.5, 1], gap="large")
 analytics_resp = process_secure_request("GET_ANALYTICS", CURRENT_STUDENT_ID, SESSION_TOKEN, ACTIVE_TOKEN, {})
 if analytics_resp["status"] == "success":
     analytics_data = analytics_resp.get("data", {})
+    if "schedule_summary" in analytics_data:
+        st.session_state.schedule_summary = analytics_data.get("schedule_summary", "")
+    if "math_summary" in analytics_data:
+        st.session_state.math_summary = analytics_data.get("math_summary", "")
+    if "rw_summary" in analytics_data:
+        st.session_state.rw_summary = analytics_data.get("rw_summary", "")
+    if "tutor_summary" in analytics_data:
+        st.session_state.tutor_summary = analytics_data.get("tutor_summary", "")
 else:
     st.error(f"Analytics Error: {analytics_resp.get('message')}")
     analytics_data = {}
@@ -150,28 +176,27 @@ if "schedule_df" not in st.session_state:
 
 # --- CENTER COLUMN: CORE INTERFACE ---
 with center_col:
-    st.title("PSAT/SAT Prep Interactive Timeline")
+    logo_file = "logo_cropped.png" if os.path.exists("logo_cropped.png") else "logo.png"
+    st.image(logo_file, use_container_width=True)
+    st.write("")
+    st.write("")
     
     # ---- 3. CENTRAL CONTENT AREA ----
     tab1, tab2, tab3, tab4 = st.tabs([
-    "🗓️ Master Academic Schedule", 
-    "📐 Mathematics Concept Plan", 
-    "📚 Reading and Writing Plan", 
-    "💬 Chat with SAT Tutor"
-])
+        "\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0**🗓️ Master Academic Schedule**\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0|", 
+        "\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0**📐 Mathematics Concept Plan**\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0|", 
+        "\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0**📚 Reading and Writing Plan**\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0|", 
+        "\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0**💬 Chat with SAT Tutor**\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0"
+    ])
     with tab1:
         # Center the control area inside tab1
         col_l, col_mid, col_r = st.columns([0.1, 4.0, 0.1])
         with col_mid:
-            # 1. Message about plan
-            st.markdown("Here is your personal schedule based on your graduation year.")
-            # 2. Strategy from strategist
-            pacing = st.session_state.get("pacing_strategy", "")
-            if pacing:
-                st.markdown(f"*{pacing}*")
-
-            # 3. Message about test date
-            st.markdown("Have a test date? Enter it here, and we'll build your study plan so you stay on track and cover everything before test day.")
+            # 0. Executive Summary from Narrator Agent
+            narrative = st.session_state.get("schedule_summary", "")
+            if narrative:
+                with st.container(border=True):
+                    st.markdown(narrative)
 
             # 3–5. Date input + buttons all on one row
             saved_date_str = st.session_state.student_profile.get("target_test_date") or ""
@@ -235,14 +260,14 @@ with center_col:
                     st.error(ics_resp["message"])
 
 
-        if "schedule_error" in st.session_state:
-            st.error(st.session_state.schedule_error)
-        elif not st.session_state.schedule_df.empty:
-            display_df = st.session_state.schedule_df[["Week", "Math Focus", "Reading & Writing Focus"]].copy()
-            display_df = display_df.set_index("Week")
-            st.table(display_df)
-        else:
-            st.info("No schedule data generated yet.")
+            if "schedule_error" in st.session_state:
+                st.error(st.session_state.schedule_error)
+            elif not st.session_state.schedule_df.empty:
+                display_df = st.session_state.schedule_df[["Week", "Math Focus", "Reading & Writing Focus"]].copy()
+                display_df = display_df.set_index("Week")
+                st.table(display_df)
+            else:
+                st.info("No schedule data generated yet.")
             
     with tab2:
         try:
@@ -250,7 +275,10 @@ with center_col:
         except TypeError:
             box = st.container()
         with box:
-            st.markdown("ℹ️ **Mastered something?** Update your schedule to remove completed tasks from your study plan. *Make sure you don't need extra practice on them, as the schedule will skip these topics!*")
+            math_text = st.session_state.get("math_summary", "")
+            if not math_text:
+                math_text = "Do you believe you already know some of this to the point you do not need to practice anymore? Look through the plan for math concepts, solving problems, and formulas, and check what you know. Clicking the Update my Schedule button will exclude these topics from your weekly study tasks so you can focus strictly on new material (and you can always uncheck them to bring them back)."
+            st.markdown(math_text)
             if st.button("Update my Schedule", use_container_width=True, key="update_schedule_math"):
                 build_schedule_from_db()
                 st.rerun()
@@ -273,7 +301,10 @@ with center_col:
         except TypeError:
             box = st.container()
         with box:
-            st.markdown("ℹ️ **Mastered something?** Update your schedule to remove completed tasks from your study plan. *Make sure you don't need extra practice on them, as the schedule will skip these topics!*")
+            rw_text = st.session_state.get("rw_summary", "")
+            if not rw_text:
+                rw_text = "Do you believe you already know some of this to the point you do not need to practice anymore? Look through the plan for reading comprehension, grammar, and evidence-based writing, and check what you know. Clicking the Update my Schedule button will exclude these topics from your weekly study tasks so you can focus strictly on new material (and you can always uncheck them to bring them back)."
+            st.markdown(rw_text)
             if st.button("Update my Schedule", use_container_width=True, key="update_schedule_rw"):
                 build_schedule_from_db()
                 st.rerun()
@@ -295,7 +326,10 @@ with center_col:
         # TUTOR CHAT WIDGET
         # ==========================================
         st.subheader("Chat with SAT Tutor Agent")
-        st.markdown("Not sure how the PSAT or SAT works? Ask the SAT Tutor Agent about the exam format, rules, scoring, timing, curriculum, or anything else — and get answers based on official College Board information.")
+        tutor_text = st.session_state.get("tutor_summary", "")
+        if not tutor_text:
+            tutor_text = "Not sure how the PSAT or SAT works? In this chat, you can ask any question about the SAT or PSAT exam, rules, curriculum, and scoring. The tutor will answer your questions strictly using information from official College Board documents."
+        st.markdown(tutor_text)
         @st.fragment
         def tutor_chat():
             with st.container(height=300):
@@ -347,7 +381,13 @@ with right_col:
     
     # Render Recent Score card
     with st.container(border=True):
-        st.subheader("Your Recent Score")
+        header_img = "scr.png" if os.path.exists("scr.png") else ""
+        if header_img:
+            col_img_l, col_img_mid, col_img_r = st.columns([1, 2.5, 1])
+            with col_img_mid:
+                st.image(header_img, use_container_width=True)
+        else:
+            st.subheader("Your Recent Score")
         st.metric("Total", f"{recent_total}" if recent_total > 0 else "-", delta=total_delta)
         col_math, col_rw = st.columns(2)
         col_math.metric("Math", f"{recent_math}" if recent_math > 0 else "-", delta=math_delta)
@@ -380,7 +420,7 @@ with right_col:
     if is_passing:
         message = "🎉 You are on the path to the National Merit Scholarship!"
     else:
-        message = "Follow the preparation schedule, stay consistent, and believe in yourself. Your effort will add up, and your score will improve. 🌟."
+        message = "Follow the preparation schedule, stay consistent, and believe in yourself. Your effort will add up, and your score will improve."
  
     # Render custom combined card
     with st.container(border=True):
@@ -390,7 +430,7 @@ with right_col:
         if is_passing:
             st.success(message)
         else:
-            st.info(message)
+            st.markdown(f"> **Prep Tip:** {message}")
 
     # Render Score Simulator
     with st.container(border=True):
@@ -410,6 +450,6 @@ with right_col:
             pass
             
         if sim_is_passing:
-            st.success("🎉 With these scores, you would meet the cutoff!")
+            st.success("With these scores, you would meet the cutoff!")
         else:
-            st.warning("⚠️ Slide the bar to see how PSAT scores effect NMSI Index.")
+            st.markdown("> **Tip:** Slide the bar to see how PSAT scores affect NMSI Index.")

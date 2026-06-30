@@ -4,136 +4,144 @@ PRODID:-//SAT Prep Agent//EN
 CALSCALE:GREGORIAN
 METHOD:PUBLISH
 BEGIN:VEVENT
-UID:70ddb656-d5a3-4371-a548-d0851c1ef330@satprepagent
-DTSTART:20260629T163000
-DTEND:20260629T183000
+UID:863a5956-8e10-43cc-99e4-6d20c8420c1f@satprepagent
+DTSTART:20260630T163000
+DTEND:20260630T183000
 SUMMARY:SAT Prep time. Check the tasks by opening the event.
-DESCRIPTION:Math:\n• Algebra: Linear equations in one variable - Creating models
-• Algebra: Linear equations in one variable - Solving equations
-• Algebra: Linear equations in one variable - Interpreting constants/variables
-• Algebra: Linear equations in two variables - Creating models\n\nReading & Writing:\n• Information and Ideas: Central Ideas and Details - Determining the primary theme
-• Information and Ideas: Central Ideas and Details - Identifying supporting textual details
+DESCRIPTION:Math:\n1. Algebra: Linear equations in one variable - Creating models
+2. Algebra: Linear equations in one variable - Solving equations
+3. Algebra: Linear equations in one variable - Interpreting constants/variables
+4. Algebra: Linear equations in two variables - Creating models\n\nReading & Writing:\n1. Information and Ideas: Central Ideas and Details - Determining the primary theme
+2. Information and Ideas: Central Ideas and Details - Identifying supporting textual details
 END:VEVENT
 BEGIN:VEVENT
-UID:2255e5c4-5d8c-43b5-88ef-3954657329d9@satprepagent
-DTSTART:20260706T163000
-DTEND:20260706T183000
+UID:140dddc7-dd9f-4cc8-a55e-15d9373fe820@satprepagent
+DTSTART:20260707T163000
+DTEND:20260707T183000
 SUMMARY:SAT Prep time. Check the tasks by opening the event.
-DESCRIPTION:Math:\n• Algebra: Linear equations in two variables - Solving equations
-• Algebra: Linear equations in two variables - Interpreting constants/variables
-• Algebra: Linear functions - Evaluating functions
-• Algebra: Linear functions - Creating models\n\nReading & Writing:\n• Information and Ideas: Command of Evidence: Textual - Selecting quotes to support claims
-• Information and Ideas: Command of Evidence: Textual - Evaluating hypotheses based on text
+DESCRIPTION:Math:\n1. Algebra: Linear equations in two variables - Solving equations
+2. Algebra: Linear equations in two variables - Interpreting constants/variables
+3. Algebra: Linear functions - Evaluating functions
+4. Algebra: Linear functions - Creating models
+5. 🎯 FULL-LENGTH DIGITAL PRACTICE TEST\n\nReading & Writing:\n1. Information and Ideas: Command of Evidence: Textual - Selecting quotes to support claims
+2. Information and Ideas: Command of Evidence: Textual - Evaluating hypotheses based on text
+3. 🎯 FULL-LENGTH DIGITAL PRACTICE TEST
 END:VEVENT
 BEGIN:VEVENT
-UID:de52a8c6-3a2b-4144-8660-52d100298fee@satprepagent
-DTSTART:20260713T163000
-DTEND:20260713T183000
+UID:82aaea50-8b64-4e0b-9766-6f6673404f23@satprepagent
+DTSTART:20260714T163000
+DTEND:20260714T183000
 SUMMARY:SAT Prep time. Check the tasks by opening the event.
-DESCRIPTION:Math:\n• Algebra: Linear functions - Interpreting graphs and constants
-• Algebra: Systems of two linear equations in two variables - Creating models
-• Algebra: Systems of two linear equations in two variables - Solving systems
-• Algebra: Systems of two linear equations in two variables - Interpreting system components\n\nReading & Writing:\n• Information and Ideas: Command of Evidence: Quantitative - Interpreting charts and tables
-• Information and Ideas: Command of Evidence: Quantitative - Linking data sets to textual claims
+DESCRIPTION:Math:\n1. Algebra: Linear functions - Interpreting graphs and constants
+2. Algebra: Systems of two linear equations in two variables - Creating models
+3. Algebra: Systems of two linear equations in two variables - Solving systems
+4. Algebra: Systems of two linear equations in two variables - Interpreting system components\n\nReading & Writing:\n1. Information and Ideas: Command of Evidence: Quantitative - Interpreting charts and tables
+2. Information and Ideas: Command of Evidence: Quantitative - Linking data sets to textual claims
 END:VEVENT
 BEGIN:VEVENT
-UID:3f834eef-90fc-48aa-bba0-051e1204e10c@satprepagent
-DTSTART:20260720T163000
-DTEND:20260720T183000
+UID:74fa3516-e73f-435b-8cb9-53318a5fa893@satprepagent
+DTSTART:20260721T163000
+DTEND:20260721T183000
 SUMMARY:SAT Prep time. Check the tasks by opening the event.
-DESCRIPTION:Math:\n• Algebra: Linear inequalities in one or two variables - Creating models
-• Algebra: Linear inequalities in one or two variables - Solving inequalities
-• Algebra: Linear inequalities in one or two variables - Interpreting constraint regions
-• Advanced Math: Equivalent expressions - Simplifying polynomials\n\nReading & Writing:\n• Information and Ideas: Inferences - Drawing unstated conclusions
-• Information and Ideas: Inferences - Following logical implications
+DESCRIPTION:Math:\n1. Algebra: Linear inequalities in one or two variables - Creating models
+2. Algebra: Linear inequalities in one or two variables - Solving inequalities
+3. Algebra: Linear inequalities in one or two variables - Interpreting constraint regions
+4. Advanced Math: Equivalent expressions - Simplifying polynomials
+5. 🎯 FULL-LENGTH DIGITAL PRACTICE TEST\n\nReading & Writing:\n1. Information and Ideas: Inferences - Drawing unstated conclusions
+2. Information and Ideas: Inferences - Following logical implications
+3. 🎯 FULL-LENGTH DIGITAL PRACTICE TEST
 END:VEVENT
 BEGIN:VEVENT
-UID:c092f369-e905-4a90-aab4-13b8f9ecd918@satprepagent
-DTSTART:20260727T163000
-DTEND:20260727T183000
+UID:cbc0d117-f076-478e-979b-82d4fc1baf03@satprepagent
+DTSTART:20260728T163000
+DTEND:20260728T183000
 SUMMARY:SAT Prep time. Check the tasks by opening the event.
-DESCRIPTION:Math:\n• Advanced Math: Equivalent expressions - Rewriting rational expressions
-• Advanced Math: Nonlinear equations in one variable and systems of equations in two variables - Solving quadratics
-• Advanced Math: Nonlinear equations in one variable and systems of equations in two variables - Solving radical equations
-• Advanced Math: Nonlinear equations in one variable and systems of equations in two variables - Solving rational equations\n\nReading & Writing:\n• Craft and Structure: Words in Context - Deducing high-utility vocabulary
-• Craft and Structure: Words in Context - Analyzing word choice impact
+DESCRIPTION:Math:\n1. Advanced Math: Equivalent expressions - Rewriting rational expressions
+2. Advanced Math: Nonlinear equations in one variable and systems of equations in two variables - Solving quadratics
+3. Advanced Math: Nonlinear equations in one variable and systems of equations in two variables - Solving radical equations
+4. Advanced Math: Nonlinear equations in one variable and systems of equations in two variables - Solving rational equations\n\nReading & Writing:\n1. Craft and Structure: Words in Context - Deducing high-utility vocabulary
+2. Craft and Structure: Words in Context - Analyzing word choice impact
 END:VEVENT
 BEGIN:VEVENT
-UID:4f4c030d-acab-4002-aedf-dd88c097b842@satprepagent
-DTSTART:20260803T163000
-DTEND:20260803T183000
+UID:12372aa8-34d3-42d1-94e5-a6a6ee148169@satprepagent
+DTSTART:20260804T163000
+DTEND:20260804T183000
 SUMMARY:SAT Prep time. Check the tasks by opening the event.
-DESCRIPTION:Math:\n• Advanced Math: Nonlinear functions - Creating models
-• Advanced Math: Nonlinear functions - Graphing parabolas and exponentials
-• Advanced Math: Nonlinear functions - Interpreting nonlinear constants
-• Problem-Solving and Data Analysis: Ratios\, rates\, proportional relationships\, and units - Solving proportions
-• 🎯 FULL-LENGTH DIGITAL PRACTICE TEST\n\nReading & Writing:\n• Craft and Structure: Text Structure and Purpose - Identifying rhetorical organization
-• Craft and Structure: Text Structure and Purpose - Determining the author's primary goal
-• 🎯 FULL-LENGTH DIGITAL PRACTICE TEST
+DESCRIPTION:Math:\n1. Advanced Math: Nonlinear functions - Creating models
+2. Advanced Math: Nonlinear functions - Graphing parabolas and exponentials
+3. Advanced Math: Nonlinear functions - Interpreting nonlinear constants
+4. Problem-Solving and Data Analysis: Ratios\, rates\, proportional relationships\, and units - Solving proportions
+5. 🎯 FULL-LENGTH DIGITAL PRACTICE TEST\n\nReading & Writing:\n1. Craft and Structure: Text Structure and Purpose - Identifying rhetorical organization
+2. Craft and Structure: Text Structure and Purpose - Determining the author's primary goal
+3. 🎯 FULL-LENGTH DIGITAL PRACTICE TEST
 END:VEVENT
 BEGIN:VEVENT
-UID:e4124449-6c27-4c72-b4dc-400f4c5bc73b@satprepagent
-DTSTART:20260810T163000
-DTEND:20260810T183000
+UID:e9d76059-4887-4e90-bc1d-464dd4195282@satprepagent
+DTSTART:20260811T163000
+DTEND:20260811T183000
 SUMMARY:SAT Prep time. Check the tasks by opening the event.
-DESCRIPTION:Math:\n• Problem-Solving and Data Analysis: Ratios\, rates\, proportional relationships\, and units - Converting units
-• Problem-Solving and Data Analysis: Ratios\, rates\, proportional relationships\, and units - Calculating unit rates
-• Problem-Solving and Data Analysis: Percentages - Percent increase/decrease
-• Problem-Solving and Data Analysis: Percentages - Part-to-whole relationships\n\nReading & Writing:\n• Craft and Structure: Cross-Text Connections - Comparing paired passages
-• Craft and Structure: Cross-Text Connections - Synthesizing opposing viewpoints
+DESCRIPTION:Math:\n1. Problem-Solving and Data Analysis: Ratios\, rates\, proportional relationships\, and units - Converting units
+2. Problem-Solving and Data Analysis: Ratios\, rates\, proportional relationships\, and units - Calculating unit rates
+3. Problem-Solving and Data Analysis: Percentages - Percent increase/decrease
+4. Problem-Solving and Data Analysis: Percentages - Part-to-whole relationships\n\nReading & Writing:\n1. Craft and Structure: Cross-Text Connections - Comparing paired passages
+2. Craft and Structure: Cross-Text Connections - Synthesizing opposing viewpoints
 END:VEVENT
 BEGIN:VEVENT
-UID:290cac9b-919d-49ab-8893-9e08e50b9d97@satprepagent
-DTSTART:20260817T163000
-DTEND:20260817T183000
+UID:76a1282a-4506-491d-bae7-78d78d1b17f9@satprepagent
+DTSTART:20260818T163000
+DTEND:20260818T183000
 SUMMARY:SAT Prep time. Check the tasks by opening the event.
-DESCRIPTION:Math:\n• Problem-Solving and Data Analysis: One-variable data: Distributions and measures of center and spread - Calculating mean/median/mode
-• Problem-Solving and Data Analysis: One-variable data: Distributions and measures of center and spread - Interpreting standard deviation
-• Problem-Solving and Data Analysis: Two-variable data: Models and scatterplots - Estimating line of best fit
-• Problem-Solving and Data Analysis: Two-variable data: Models and scatterplots - Predicting values from models\n\nReading & Writing:\n• Expression of Ideas: Rhetorical Synthesis - Combining provided bullet points
-• Expression of Ideas: Rhetorical Synthesis - Achieving specific rhetorical goals
+DESCRIPTION:Math:\n1. Problem-Solving and Data Analysis: One-variable data: Distributions and measures of center and spread - Calculating mean/median/mode
+2. Problem-Solving and Data Analysis: One-variable data: Distributions and measures of center and spread - Interpreting standard deviation
+3. Problem-Solving and Data Analysis: Two-variable data: Models and scatterplots - Estimating line of best fit
+4. Problem-Solving and Data Analysis: Two-variable data: Models and scatterplots - Predicting values from models
+5. 🎯 FULL-LENGTH DIGITAL PRACTICE TEST\n\nReading & Writing:\n1. Expression of Ideas: Rhetorical Synthesis - Combining provided bullet points
+2. Expression of Ideas: Rhetorical Synthesis - Achieving specific rhetorical goals
+3. 🎯 FULL-LENGTH DIGITAL PRACTICE TEST
 END:VEVENT
 BEGIN:VEVENT
-UID:8009801b-2ea9-44ec-822a-5b6766962cf3@satprepagent
-DTSTART:20260824T163000
-DTEND:20260824T183000
+UID:d2b5c817-7993-4dc2-8534-6af5217db43e@satprepagent
+DTSTART:20260825T163000
+DTEND:20260825T183000
 SUMMARY:SAT Prep time. Check the tasks by opening the event.
-DESCRIPTION:Math:\n• Problem-Solving and Data Analysis: Probability and conditional probability - Calculating independent events
-• Problem-Solving and Data Analysis: Probability and conditional probability - Calculating conditional probabilities
-• Problem-Solving and Data Analysis: Inference from sample statistics and margin of error - Evaluating sample representation
-• Problem-Solving and Data Analysis: Inference from sample statistics and margin of error - Interpreting margin of error\n\nReading & Writing:\n• Expression of Ideas: Transitions - Selecting logical connectives
-• Expression of Ideas: Transitions - Establishing cause-and-effect flow
+DESCRIPTION:Math:\n1. Problem-Solving and Data Analysis: Probability and conditional probability - Calculating independent events
+2. Problem-Solving and Data Analysis: Probability and conditional probability - Calculating conditional probabilities
+3. Problem-Solving and Data Analysis: Inference from sample statistics and margin of error - Evaluating sample representation
+4. Problem-Solving and Data Analysis: Inference from sample statistics and margin of error - Interpreting margin of error\n\nReading & Writing:\n1. Expression of Ideas: Transitions - Selecting logical connectives
+2. Expression of Ideas: Transitions - Establishing cause-and-effect flow
 END:VEVENT
 BEGIN:VEVENT
-UID:23e86fcd-17a9-40b0-b441-3c1fbd66396e@satprepagent
-DTSTART:20260831T163000
-DTEND:20260831T183000
+UID:b6fd6816-f39d-4c02-9399-5ccf3e1b2435@satprepagent
+DTSTART:20260901T163000
+DTEND:20260901T183000
 SUMMARY:SAT Prep time. Check the tasks by opening the event.
-DESCRIPTION:Math:\n• Problem-Solving and Data Analysis: Evaluating statistical claims: Observational studies and experiments - Identifying bias
-• Problem-Solving and Data Analysis: Evaluating statistical claims: Observational studies and experiments - Determining causality vs. correlation
-• Geometry and Trigonometry: Area and volume - Applying volume formulas
-• Geometry and Trigonometry: Area and volume - Calculating surface area\n\nReading & Writing:\n• Standard English Conventions: Boundaries - Linking independent clauses
-• Standard English Conventions: Boundaries - Proper use of commas\, semicolons\, and dashes
+DESCRIPTION:Math:\n1. Problem-Solving and Data Analysis: Evaluating statistical claims: Observational studies and experiments - Identifying bias
+2. Problem-Solving and Data Analysis: Evaluating statistical claims: Observational studies and experiments - Determining causality vs. correlation
+3. Geometry and Trigonometry: Area and volume - Applying volume formulas
+4. Geometry and Trigonometry: Area and volume - Calculating surface area
+5. 🎯 FULL-LENGTH DIGITAL PRACTICE TEST\n\nReading & Writing:\n1. Standard English Conventions: Boundaries - Linking independent clauses
+2. Standard English Conventions: Boundaries - Proper use of commas\, semicolons\, and dashes
+3. 🎯 FULL-LENGTH DIGITAL PRACTICE TEST
 END:VEVENT
 BEGIN:VEVENT
-UID:c606d543-5566-47bf-bdd9-c7d7f8f8e50e@satprepagent
-DTSTART:20260907T163000
-DTEND:20260907T183000
+UID:ae890b29-44be-4135-8c81-e798ea4563f5@satprepagent
+DTSTART:20260908T163000
+DTEND:20260908T183000
 SUMMARY:SAT Prep time. Check the tasks by opening the event.
-DESCRIPTION:Math:\n• Geometry and Trigonometry: Lines\, angles\, and triangles - Parallel line theorems
-• Geometry and Trigonometry: Lines\, angles\, and triangles - Similar triangle properties
-• Geometry and Trigonometry: Right triangles and trigonometry - Pythagorean theorem
-• Geometry and Trigonometry: Right triangles and trigonometry - Sine\, cosine\, and tangent ratios\n\nReading & Writing:\n• Standard English Conventions: Form\, Structure\, and Sense - Subject-verb agreement
-• Standard English Conventions: Form\, Structure\, and Sense - Verb tense consistency
+DESCRIPTION:Math:\n1. Geometry and Trigonometry: Lines\, angles\, and triangles - Parallel line theorems
+2. Geometry and Trigonometry: Lines\, angles\, and triangles - Similar triangle properties
+3. Geometry and Trigonometry: Right triangles and trigonometry - Pythagorean theorem
+4. Geometry and Trigonometry: Right triangles and trigonometry - Sine\, cosine\, and tangent ratios\n\nReading & Writing:\n1. Standard English Conventions: Form\, Structure\, and Sense - Subject-verb agreement
+2. Standard English Conventions: Form\, Structure\, and Sense - Verb tense consistency
 END:VEVENT
 BEGIN:VEVENT
-UID:7c14a03d-fa8a-4a1a-b6e0-86de8996841f@satprepagent
-DTSTART:20260914T163000
-DTEND:20260914T183000
+UID:43f0a1f6-749d-4633-a538-a8f9ac4e8245@satprepagent
+DTSTART:20260915T163000
+DTEND:20260915T183000
 SUMMARY:SAT Prep time. Check the tasks by opening the event.
-DESCRIPTION:Math:\n• Geometry and Trigonometry: Circles - Equation of a circle
-• Geometry and Trigonometry: Circles - Arc length and sector area
-• 🎯 FULL-LENGTH DIGITAL PRACTICE TEST\n\nReading & Writing:\n• Standard English Conventions: Form\, Structure\, and Sense - Parallel structure
-• 🎯 FULL-LENGTH DIGITAL PRACTICE TEST
+DESCRIPTION:Math:\n1. Geometry and Trigonometry: Circles - Equation of a circle
+2. Geometry and Trigonometry: Circles - Arc length and sector area
+3. 🎯 FULL-LENGTH DIGITAL PRACTICE TEST\n\nReading & Writing:\n1. Standard English Conventions: Form\, Structure\, and Sense - Parallel structure
+2. 🎯 FULL-LENGTH DIGITAL PRACTICE TEST
 END:VEVENT
 END:VCALENDAR

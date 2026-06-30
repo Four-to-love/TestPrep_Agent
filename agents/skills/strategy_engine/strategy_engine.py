@@ -4,7 +4,7 @@ from agents.skills.curriculum_mapper.scheduler_skill import generate_schedule
 from agents.skills.test_date_calculator.date_engine import calculate_test_date
 from datetime import date
 
-class StrategistAgent:
+class StrategyEngine:
     def __init__(self):
         pass
 

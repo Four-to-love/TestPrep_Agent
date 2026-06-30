@@ -61,54 +61,137 @@ def render_syllabus_timeline(syllabus_file, marker_class, key_prefix, student_id
 
     # Render container
     with st.container(border=True):
-        # Header Row (2 columns: Task and Checkbox)
-        h1, h2 = st.columns([10, 2])
-        h1.markdown(f"### {column_label}")
-        h2.markdown("### Mastered")
-        st.divider()
-        
+        expanded_key = f"expanded_topic_{key_prefix}"
+
         # Row Iteration with hierarchy
         chk_idx = 0
         for u_idx, unit in enumerate(data.get("units", [])):
             domain_name = unit.get("domain", "")
             roman_num = ROMAN[u_idx + 1] if u_idx + 1 < len(ROMAN) else str(u_idx + 1)
+            
+            # 1. Collect all granular skill names under this Unit for cascading checks
+            unit_skills = []
+            for topic in unit.get("topics", []):
+                for skill in topic.get("granular_skills", []):
+                    unit_skills.append(f"{domain_name}: {topic.get('name', '')} - {skill}")
+            unit_mastered = all(s in mastered_topics for s in unit_skills) if unit_skills else False
+            
             # 1. Domain Row (Roman numeral) centered using columns
-            col_l, col_mid, col_r = st.columns([2, 8, 2])
-            with col_mid:
-                st.markdown(f"#### {roman_num}. {domain_name}")
+            c_l, c_mid, c_check = st.columns([1.5, 8.5, 2.0])
+            with c_mid:
+                st.markdown(f"### {roman_num}. {domain_name}")
+            with c_check:
+                # Unit checkmark button
+                unit_icon = "✅" if unit_mastered else "⬜"
+                if st.button(unit_icon, key=f"chk_unit_{key_prefix}_{u_idx}", help="Toggle entire unit"):
+                    new_val = 0 if unit_mastered else 1
+                    for s_name in unit_skills:
+                        process_secure_request(
+                            "UPDATE_SYLLABUS", 
+                            student_id, 
+                            session_token, 
+                            active_token, 
+                            {"topic": s_name, "is_completed": new_val}
+                        )
+                    st.rerun()
             
             for t_idx, topic in enumerate(unit.get("topics", [])):
                 topic_name = topic.get("name", "")
                 topic_num = t_idx + 1
                 
-                # 2. Topic Row (Arabic numeral, indented)
-                c1, c2 = st.columns([10, 2])
-                indent_topic = "\u00a0\u00a0\u00a0"
-                c1.markdown(f"**{indent_topic}{topic_num}. {topic_name}**")
-                c2.write("")  # No checkbox for topic header
+                # 2. Collect all granular skill names under this Topic for cascading checks
+                topic_skills = [f"{domain_name}: {topic_name} - {s}" for s in topic.get("granular_skills", [])]
+                topic_mastered = all(s in mastered_topics for s in topic_skills) if topic_skills else False
+                
+                # 2. Topic Row (Arabic numeral, indented via column layout)
+                c_indent, c_text, c_expand, c_check = st.columns([0.5, 8.5, 1.0, 2.0])
+                c_text.markdown(f"**{topic_num}. {topic_name}**")
+                
+                topic_val = f"{domain_name}: {topic_name}"
+                with c_expand:
+                    if st.button("🔍", key=f"exp_top_{key_prefix}_{u_idx}_{t_idx}", help="Click to expand details"):
+                        if st.session_state.get(expanded_key) == topic_val:
+                            del st.session_state[expanded_key]
+                        else:
+                            st.session_state[expanded_key] = topic_val
+                        st.rerun()
+                with c_check:
+                    # Topic checkmark button
+                    topic_icon = "✅" if topic_mastered else "⬜"
+                    if st.button(topic_icon, key=f"chk_top_{key_prefix}_{u_idx}_{t_idx}", help="Toggle entire topic"):
+                        new_val = 0 if topic_mastered else 1
+                        for s_name in topic_skills:
+                            process_secure_request(
+                                "UPDATE_SYLLABUS", 
+                                student_id, 
+                                session_token, 
+                                active_token, 
+                                {"topic": s_name, "is_completed": new_val}
+                            )
+                        st.rerun()
+                
+                # Render inline details card for Topic if active
+                if st.session_state.get(expanded_key) == topic_val:
+                    with st.container(border=True):
+                        with st.chat_message("assistant", avatar="🔍"):
+                            col_t, col_c = st.columns([10, 1])
+                            if col_c.button("✖", key=f"close_top_{key_prefix}_{u_idx}_{t_idx}"):
+                                del st.session_state[expanded_key]
+                                st.rerun()
+                            
+                            resp = process_secure_request("EXPAND_TOPIC", student_id, session_token, active_token, {"topic_name": topic_val, "category": "math" if key_prefix == "math" else "rw"})
+                            if resp["status"] == "success":
+                                st.markdown(resp["data"])
+                            else:
+                                st.error("Could not load expansion details.")
                 
                 for s_idx, skill in enumerate(topic.get("granular_skills", [])):
                     skill_num = f"{topic_num}.{s_idx + 1}"
                     full_name = f"{domain_name}: {topic_name} - {skill}"
                     is_mastered = full_name in mastered_topics
                     
-                    # 3. Granular Skill Row (Dotted decimal, further indented)
-                    c1, c2 = st.columns([10, 2])
-                    indent_skill = "\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0"
+                    # 3. Granular Skill Row (Dotted decimal, further indented via column layout)
+                    c_indent, c_text, c_expand, c_check = st.columns([1.0, 8.0, 1.0, 2.0])
                     if is_mastered:
-                        c1.markdown(f"{indent_skill}~~{skill_num} {skill}~~")
+                        c_text.markdown(f"~~{skill_num} {skill}~~")
                     else:
-                        c1.markdown(f"{indent_skill}{skill_num} {skill}")
-                    with c2:
-                        is_checked = st.checkbox("Mastered", value=is_mastered, key=f"{key_prefix}_{chk_idx}", label_visibility="collapsed")
-                        chk_idx += 1
-                        if is_checked != is_mastered:
+                        c_text.markdown(f"{skill_num} {skill}")
+                    
+                    with c_expand:
+                        if st.button("🔍", key=f"exp_skill_{key_prefix}_{chk_idx}", help="Click to expand details"):
+                            if st.session_state.get(expanded_key) == full_name:
+                                del st.session_state[expanded_key]
+                            else:
+                                st.session_state[expanded_key] = full_name
+                            st.rerun()
+                            
+                    with c_check:
+                        # Granular Skill checkmark button
+                        skill_icon = "✅" if is_mastered else "⬜"
+                        if st.button(skill_icon, key=f"chk_skill_{key_prefix}_{chk_idx}", help="Toggle skill"):
+                            new_val = 0 if is_mastered else 1
                             process_secure_request(
                                 "UPDATE_SYLLABUS", 
                                 student_id, 
                                 session_token, 
                                 active_token, 
-                                {"topic": full_name, "is_completed": 1 if is_checked else 0}
+                                {"topic": full_name, "is_completed": new_val}
                             )
                             st.rerun()
+                        chk_idx += 1
+                            
+                    # Render inline details card for Subtopic if active
+                    if st.session_state.get(expanded_key) == full_name:
+                        with st.container(border=True):
+                            with st.chat_message("assistant", avatar="🔍"):
+                                col_t, col_c = st.columns([10, 1])
+                                if col_c.button("✖", key=f"close_skill_{key_prefix}_{chk_idx}"):
+                                    del st.session_state[expanded_key]
+                                    st.rerun()
+                                
+                                resp = process_secure_request("EXPAND_TOPIC", student_id, session_token, active_token, {"topic_name": full_name, "category": "math" if key_prefix == "math" else "rw"})
+                                if resp["status"] == "success":
+                                    st.markdown(resp["data"])
+                                else:
+                                    st.error("Could not load expansion details.")
 

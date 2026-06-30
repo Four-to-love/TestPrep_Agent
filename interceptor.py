@@ -7,7 +7,8 @@ from constants import STATES_LIST
 # ==========================================
 from agents.tutor import SyllabusTutorAgent
 from agents.topic_expander import TopicExpanderAgent
-from agents.strategist import StrategistAgent
+from agents.skills.strategy_engine.strategy_engine import StrategyEngine
+from agents.narrator import NarratorAgent
 
 # ==========================================
 # SKILL IMPORTS
@@ -41,7 +42,7 @@ def process_secure_request(action_type, student_id, session_token, active_token,
         state_code = payload.get("state_code")
         grad_year = payload.get("graduation_year")
         has_test_date = "target_test_date" in payload
-        target_test_date = payload.get("target_test_date")
+        target_test_date = payload.get("target_test_date") if has_test_date else ""
 
         if state_code not in STATES_LIST:
             return {"status": "error", "message": "Validation Error: Invalid state code."}
@@ -54,32 +55,18 @@ def process_secure_request(action_type, student_id, session_token, active_token,
             return {"status": "error", "message": "Validation Error: Graduation year must be between 2026 and 2032."}
 
         try:
-            conn = sqlite3.connect(DB_PATH)
-            c = conn.cursor()
-            
-            if has_test_date:
-                c.execute('''
-                    INSERT INTO students (student_id, state_code, graduation_year, target_test_date)
-                    VALUES (?, ?, ?, ?)
-                    ON CONFLICT(student_id) DO UPDATE SET 
-                        state_code=excluded.state_code, 
-                        graduation_year=excluded.graduation_year,
-                        target_test_date=excluded.target_test_date
-                ''', (student_id, state_code, grad_year, target_test_date))
-            else:
-                c.execute('''
-                    INSERT INTO students (student_id, state_code, graduation_year)
-                    VALUES (?, ?, ?)
-                    ON CONFLICT(student_id) DO UPDATE SET 
-                        state_code=excluded.state_code, 
-                        graduation_year=excluded.graduation_year
-                ''', (student_id, state_code, grad_year))
-            
-            conn.commit()
-            conn.close()
-            return {"status": "success", "message": "Profile updated successfully."}
-        except Exception as e:
-            return {"status": "error", "message": f"Database Error: {str(e)}"}
+            student_num = int(re.search(r'\d+', student_id).group())
+        except:
+            student_num = 1
+
+        try:
+            from mcp_server import save_student_profile
+            resp_str = save_student_profile(student_num, state_code, grad_year, target_test_date)
+            if resp_str.startswith("Success"):
+                return {"status": "success", "message": resp_str}
+            return {"status": "error", "message": resp_str}
+        except Exception:
+            return {"status": "error", "message": "Service Connection Error: The profile update service is currently offline. Please try again later."}
 
     elif action_type == "GET_STUDENT":
         try:
@@ -114,18 +101,18 @@ def process_secure_request(action_type, student_id, session_token, active_token,
             return {"status": "error", "message": "Validation Error: Invalid score or date format."}
 
         try:
-            conn = sqlite3.connect(DB_PATH)
-            c = conn.cursor()
-            sat_total = math_score + rw_score
-            c.execute('''
-                INSERT INTO practice_scores (student_id, date_test_taken, sat_total_score, math_score, reading_writing_score)
-                VALUES (?, ?, ?, ?, ?)
-            ''', (student_id, date_test_taken, sat_total, math_score, rw_score))
-            conn.commit()
-            conn.close()
-            return {"status": "success", "message": "Scores logged successfully."}
-        except Exception as e:
-            return {"status": "error", "message": f"Database Error: {str(e)}"}
+            student_num = int(re.search(r'\d+', student_id).group())
+        except:
+            student_num = 1
+
+        try:
+            from mcp_server import log_student_scores
+            resp_str = log_student_scores(student_num, math_score, rw_score, date_test_taken)
+            if resp_str.startswith("Success"):
+                return {"status": "success", "message": resp_str}
+            return {"status": "error", "message": resp_str}
+        except Exception:
+            return {"status": "error", "message": "Service Connection Error: The score logging service is currently offline. Please try again later."}
 
     elif action_type == "GET_ANALYTICS":
         try:
@@ -175,7 +162,7 @@ def process_secure_request(action_type, student_id, session_token, active_token,
                 c.execute("SELECT topic FROM syllabus_progress WHERE student_id = ? AND is_completed = 1", (student_id,))
                 mastered_skills = [row["topic"] for row in c.fetchall()]
                 
-                agent = StrategistAgent()
+                agent = StrategyEngine()
                 blueprint = agent.generate_adaptive_timeline(
                     graduation_year=grad_year,
                     test_date_str=db_test_date,
@@ -186,6 +173,25 @@ def process_secure_request(action_type, student_id, session_token, active_token,
                 if "error" not in blueprint:
                     overall_focus = blueprint.get("overall_focus", "")
                     pacing_strategy = blueprint.get("pacing_strategy", "")
+                    narrator = NarratorAgent()
+                    schedule_summary = narrator.generate_schedule_summary(
+                        state_code=state_code,
+                        target_test_date=db_test_date,
+                        pacing_strategy=pacing_strategy
+                    )
+                    math_summary = narrator.generate_math_summary()
+                    rw_summary = narrator.generate_rw_summary()
+                    tutor_summary = narrator.generate_tutor_summary()
+                else:
+                    schedule_summary = ""
+                    math_summary = ""
+                    rw_summary = ""
+                    tutor_summary = ""
+            else:
+                schedule_summary = ""
+                math_summary = ""
+                rw_summary = ""
+                tutor_summary = ""
             
             conn.close()
             
@@ -200,7 +206,11 @@ def process_secure_request(action_type, student_id, session_token, active_token,
                     "state_code": state_code,
                     "nmsi_cutoff": target_cutoff,
                     "overall_focus": overall_focus,
-                    "pacing_strategy": pacing_strategy
+                    "pacing_strategy": pacing_strategy,
+                    "schedule_summary": schedule_summary,
+                    "math_summary": math_summary,
+                    "rw_summary": rw_summary,
+                    "tutor_summary": tutor_summary
                 }
             }
 
@@ -214,21 +224,20 @@ def process_secure_request(action_type, student_id, session_token, active_token,
         # Basic type validation
         if not isinstance(topic, str) or is_completed not in [0, 1]:
             return {"status": "error", "message": "Validation Error: Invalid syllabus data."}
-            
+
         try:
-            conn = sqlite3.connect(DB_PATH)
-            c = conn.cursor()
-            # Upsert: Insert new topic progress, or update existing topic state
-            c.execute('''
-                INSERT INTO syllabus_progress (student_id, topic, is_completed)
-                VALUES (?, ?, ?)
-                ON CONFLICT(student_id, topic) DO UPDATE SET is_completed=excluded.is_completed
-            ''', (student_id, topic, is_completed))
-            conn.commit()
-            conn.close()
-            return {"status": "success"}
-        except Exception as e:
-            return {"status": "error", "message": f"Database Error: {str(e)}"}
+            student_num = int(re.search(r'\d+', student_id).group())
+        except:
+            student_num = 1
+
+        try:
+            from mcp_server import update_syllabus
+            resp_str = update_syllabus(student_num, topic, is_completed)
+            if resp_str.startswith("Success"):
+                return {"status": "success"}
+            return {"status": "error", "message": resp_str}
+        except Exception:
+            return {"status": "error", "message": "Service Connection Error: The syllabus update service is currently offline. Please try again later."}
 
     elif action_type == "GET_SYLLABUS":
         try:
@@ -251,14 +260,15 @@ def process_secure_request(action_type, student_id, session_token, active_token,
             conn = sqlite3.connect(DB_PATH)
             c = conn.cursor()
             
-            # 1. Fetch Profile (Graduation Year & Target Test Date)
-            c.execute("SELECT graduation_year, target_test_date FROM students WHERE student_id = ?", (student_id,))
+            # 1. Fetch Profile (Graduation Year, Target Test Date & State)
+            c.execute("SELECT graduation_year, target_test_date, state_code FROM students WHERE student_id = ?", (student_id,))
             profile_row = c.fetchone()
             if not profile_row or not profile_row[0]:
                  conn.close()
                  return {"status": "error", "message": "No profile found. Please save your graduation year first."}
             grad_year = profile_row[0]
             db_test_date = profile_row[1]
+            state_code = profile_row[2] if profile_row[2] else "WA"
             
             # Determine test_date
             if not test_date_str:
@@ -292,7 +302,7 @@ def process_secure_request(action_type, student_id, session_token, active_token,
             conn.close()
 
             # 4. Generate Blueprint using the Silent Agent
-            agent = StrategistAgent()
+            agent = StrategyEngine()
             blueprint = agent.generate_adaptive_timeline(
                 graduation_year=grad_year,
                 test_date_str=test_date_str,
@@ -304,6 +314,17 @@ def process_secure_request(action_type, student_id, session_token, active_token,
             # Pass up any errors returned by the scheduler
             if "error" in blueprint:
                 return {"status": "error", "message": blueprint["error"]}
+
+            # Generate narrative summaries
+            narrator = NarratorAgent()
+            blueprint["schedule_summary"] = narrator.generate_schedule_summary(
+                state_code=state_code,
+                target_test_date=test_date_str,
+                pacing_strategy=blueprint.get("pacing_strategy", "")
+            )
+            blueprint["math_summary"] = narrator.generate_math_summary()
+            blueprint["rw_summary"] = narrator.generate_rw_summary()
+            blueprint["tutor_summary"] = narrator.generate_tutor_summary()
 
             # Return the finalized multi-grade schedule
             return {"status": "success", "data": blueprint}
@@ -323,7 +344,8 @@ def process_secure_request(action_type, student_id, session_token, active_token,
     elif action_type == "EXPAND_TOPIC":
         expander = TopicExpanderAgent()
         topic_name = payload.get("topic_name", "")
-        return {"status": "success", "data": expander.expand_topic(topic_name)}
+        category = payload.get("category", None)
+        return {"status": "success", "data": expander.expand_topic(topic_name, category)}
 
     elif action_type == "CALCULATE_NMSI":
         # 1. Grab the scores dictionary from the payload

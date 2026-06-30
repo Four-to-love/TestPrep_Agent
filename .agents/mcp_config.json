@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "testprep_score_checker": {
+      "command": "python3",
+      "args": [
+        "/Users/masha/testprep_agent/mcp_server.py"
+      ]
+    }
+  }
+}
