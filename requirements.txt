@@ -1,9 +1,24 @@
-streamlit
-pandas
-python-dotenv
-google-genai
-ics
-tenacity
+# UI & Framework
+streamlit==1.58.0
+
+# LLM Brain & Tool Integration
+google-genai==2.10.0
+mcp==1.28.1
+
+# Explicit MCP SSE Transport
 httpx
-mcp
-bcrypt
+httpx-sse
+
+# Zero-Trust Data Validation & Security
+pydantic==2.13.4
+pydantic-settings==2.14.2
+bcrypt==5.0.0
+
+# Resiliency
+tenacity==9.1.4
+
+# Data Operations (For precise table/csv manipulation)
+pandas==3.0.3
+
+# Environment
+python-dotenv==1.2.2
