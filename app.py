@@ -7,47 +7,66 @@ import datetime
 from interceptor import process_secure_request
 from constants import STATES_LIST
 
-st.set_page_config(page_title="TestPrep_Agent", layout="wide", initial_sidebar_state="expanded")
+st.set_page_config(page_title="TestPrep_Agent", layout="wide", initial_sidebar_state="collapsed")
 
 
 
-# --- MOCK AUTHENTICATION ---
-CURRENT_STUDENT_ID = "student_001"
-SESSION_TOKEN = "valid_token"
-ACTIVE_TOKEN = "valid_token"
+# --- MOCK AUTHENTICATION & ZERO-TRUST SECURITY CENTER ---
+if "logged_in" not in st.session_state:
+    st.session_state.logged_in = False
+if "student_id" not in st.session_state:
+    st.session_state.student_id = ""
+if "session_token" not in st.session_state:
+    st.session_state.session_token = ""
+if "tamper_token" not in st.session_state:
+    st.session_state.tamper_token = False
+if "just_logged_in" not in st.session_state:
+    st.session_state.just_logged_in = False
 
-if "chat_history" not in st.session_state:
-    st.session_state.chat_history = []
-if "schedule_summary" not in st.session_state:
+
+
+# Live token accessors — always read from session_state at call time to prevent stale snapshots
+def _sid():    return st.session_state.get("student_id", "")
+def _tok():    return st.session_state.get("session_token", "")
+
+def show_friendly_error(message: str):
+    """Displays user-friendly, kid-appropriate warnings or help boxes instead of raw red consoles."""
+    if not message:
+        return
+    msg_lower = message.lower()
+    if "session token" in msg_lower or "expired" in msg_lower or "unauthorized" in msg_lower:
+        st.warning("🔑 **Please sign in to save your changes!**\n\nYour login session has expired. Please uncheck the 'Tamper' box in the Security Center (or refresh the page) to log back in.")
+    elif "offline" in msg_lower or "connection" in msg_lower or "server" in msg_lower:
+        st.info("☁️ **Database is taking a quick break!**\n\nWe couldn't reach the database server. Make sure `python3 mcp_server.py` is running in your terminal, then try again.")
+    else:
+        st.info(f"💡 **Tip:** {message}")
+
+def clear_date_error():
+    if "save_date_error" in st.session_state:
+        del st.session_state.save_date_error
+
+def invalidate_summaries():
+    st.session_state.summaries_loaded = False
     st.session_state.schedule_summary = ""
-if "math_summary" not in st.session_state:
     st.session_state.math_summary = ""
-if "rw_summary" not in st.session_state:
     st.session_state.rw_summary = ""
-if "tutor_summary" not in st.session_state:
     st.session_state.tutor_summary = ""
 
-# Load student profile on startup via secure interceptor request
-if "student_profile" not in st.session_state:
-    resp = process_secure_request("GET_STUDENT", CURRENT_STUDENT_ID, SESSION_TOKEN, ACTIVE_TOKEN, {})
-    if resp["status"] == "success":
-        st.session_state.student_profile = resp["data"]
-    else:
-        st.session_state.student_profile = {"state_code": "WA", "graduation_year": 2028, "target_test_date": ""}
 
-# Define schedule builder helper
+def clear_all_state():
+    """Clears all session state variables to ensure a clean slate on login/logout."""
+    for key in list(st.session_state.keys()):
+        if key not in ["logged_in", "student_id", "session_token", "tamper_token"]:
+            del st.session_state[key]
+
 def build_schedule_from_db():
-    plan_resp = process_secure_request("GENERATE_PLAN", CURRENT_STUDENT_ID, SESSION_TOKEN, ACTIVE_TOKEN, {})
+    """Calls GENERATE_PLAN via the interceptor and writes the result into session state."""
+    plan_resp = process_secure_request("GENERATE_PLAN", _sid(), _tok(), _tok(), {})
     if plan_resp["status"] == "success":
         plan_data = plan_resp.get("data", {})
-        # Stash focus, pacing strategy, and narrative summaries in session state
         st.session_state.overall_focus = plan_data.get("overall_focus", "")
         st.session_state.pacing_strategy = plan_data.get("pacing_strategy", "")
-        st.session_state.schedule_summary = plan_data.get("schedule_summary", "")
-        st.session_state.math_summary = plan_data.get("math_summary", "")
-        st.session_state.rw_summary = plan_data.get("rw_summary", "")
-        st.session_state.tutor_summary = plan_data.get("tutor_summary", "")
-        
+
         if "schedule_error" in st.session_state:
             del st.session_state.schedule_error
         rows = []
@@ -64,21 +83,13 @@ def build_schedule_from_db():
                             weeks[w_num]['Math Tasks'].extend(week_data['tasks'])
                         else:
                             weeks[w_num]['Reading & Writing Tasks'].extend(week_data['tasks'])
-                            
+
             for w_num in sorted(weeks.keys()):
-                week_start_date = start_date + datetime.timedelta(days=(w_num-1)*7)
+                week_start_date = start_date + datetime.timedelta(days=(w_num - 1) * 7)
                 math_tasks = weeks[w_num]['Math Tasks']
-                if math_tasks:
-                    math_str = "\n".join(f"{idx+1}. {task}" for idx, task in enumerate(math_tasks))
-                else:
-                    math_str = "You finished the curriculum. Now practice the most hard parts."
-                
+                math_str = "\n".join(f"{idx+1}. {task}" for idx, task in enumerate(math_tasks)) if math_tasks else "You finished the curriculum. Now practice the most hard parts."
                 rw_tasks = weeks[w_num]['Reading & Writing Tasks']
-                if rw_tasks:
-                    rw_str = "\n".join(f"{idx+1}. {task}" for idx, task in enumerate(rw_tasks))
-                else:
-                    rw_str = "You finished the curriculum. Now practice the most hard parts."
-                
+                rw_str = "\n".join(f"{idx+1}. {task}" for idx, task in enumerate(rw_tasks)) if rw_tasks else "You finished the curriculum. Now practice the most hard parts."
                 rows.append({
                     "Week": f"Week {w_num}\n{week_start_date.strftime('%B, %d')}",
                     "Math Focus": math_str,
@@ -90,97 +101,263 @@ def build_schedule_from_db():
         st.session_state.schedule_df = pd.DataFrame()
         st.session_state.schedule_error = plan_resp.get("message", "Unknown error generating plan.")
 
+
+
+# --- LOGIN SIGN-IN PAGE TRIGGER ---
+if not st.session_state.logged_in:
+    logo_file = "logo.webp" if os.path.exists("logo.webp") else None
+    st.image(logo_file, width="stretch")
+    st.write("")
+    st.write("")
+    
+    col_a, col_b, col_c = st.columns([1, 2, 1])
+    with col_b:
+        mode = st.radio("Choose Mode", ["Sign In", "Register"], horizontal=True, label_visibility="collapsed")
+        
+        if mode == "Sign In":
+            st.subheader("🔑 Student Sign-In")
+            login_id_input = st.text_input("Username", placeholder="e.g. smart_fox")
+            pin_input = st.text_input("PIN", type="password", placeholder="e.g. 1234")
+
+            st.write("")
+            login_btn_col, demo_btn_col = st.columns([1, 1])
+            with login_btn_col:
+                if st.button("Sign In", width="stretch", type="primary", key="sign_in_primary_btn"):
+                    auth_resp = process_secure_request(
+                        "AUTHENTICATE",
+                        login_id_input.strip(),
+                        "", "",
+                        {"student_id": login_id_input.strip(), "pin": pin_input.strip()}
+                    )
+                    if auth_resp["status"] == "success":
+                        clear_all_state()
+                        st.session_state.student_id = login_id_input.strip()
+                        st.session_state.session_token = auth_resp["data"]["session_token"]
+                        st.session_state.logged_in = True
+                        st.session_state.just_logged_in = True
+                        st.rerun()
+                    else:
+                        show_friendly_error(auth_resp["message"])
+            with demo_btn_col:
+                if st.button("✨ Interactive Demo", width="stretch", key="guest_demo_btn"):
+                    guest_resp = process_secure_request(
+                        "AUTHENTICATE_GUEST", "guest_demo", "", "", {}
+                    )
+                    if guest_resp["status"] == "success":
+                        clear_all_state()
+                        st.session_state.student_id = "guest_demo"
+                        st.session_state.session_token = guest_resp["data"]["session_token"]
+                        st.session_state.logged_in = True
+                        st.session_state.is_guest = True
+                        st.session_state.just_logged_in = True
+                        st.rerun()
+                    else:
+                        show_friendly_error(guest_resp.get("message", "Demo initialization failed."))
+        else:
+            st.subheader("📝 Create Account")
+            reg_name_input = st.text_input("Your Name", placeholder="e.g. Alex Smith")
+            reg_id_input = st.text_input("Choose Username", placeholder="e.g. smart_fox")
+            reg_pin_input = st.text_input("Choose PIN", type="password", placeholder="e.g. 4-digit code")
+
+            reg_state = st.selectbox("State", STATES_LIST, index=STATES_LIST.index("WA") if "WA" in STATES_LIST else 0, key="reg_state_code")
+            reg_grad_year = st.number_input("Grad Year", min_value=2027, max_value=2035, value=2028, key="reg_grad_year")
+
+            st.write("")
+            if st.button("Register & Login", width="stretch", type="primary", key="register_submit_btn"):
+                if not reg_id_input.strip() or not reg_pin_input.strip() or not reg_name_input.strip():
+                    show_friendly_error("Please enter Your Name, Username, and PIN.")
+                else:
+                    reg_resp = process_secure_request(
+                        "REGISTER_STUDENT",
+                        reg_id_input.strip(),
+                        "", "",
+                        {
+                            "student_id": reg_id_input.strip(),
+                            "pin": reg_pin_input.strip(),
+                            "state_code": reg_state,
+                            "graduation_year": reg_grad_year,
+                            "target_test_date": "",
+                            "student_name": reg_name_input.strip()
+                        }
+                    )
+                    if reg_resp["status"] == "success":
+                        clear_all_state()
+                        st.session_state.student_id = reg_id_input.strip()
+                        st.session_state.session_token = reg_resp["data"]["session_token"]
+                        st.session_state.logged_in = True
+                        st.session_state.just_logged_in = True
+                        st.rerun()
+                    else:
+                        show_friendly_error(reg_resp["message"])
+    st.stop()
+
+# Initialize student profile when logged in
+if "student_profile" not in st.session_state:
+    resp = process_secure_request("GET_STUDENT", _sid(), _tok(), _tok(), {})
+    if resp["status"] == "success":
+        st.session_state.student_profile = resp["data"]
+    else:
+        st.session_state.student_profile = {
+            "state_code": "WA",
+            "graduation_year": 2028,
+            "target_test_date": "",
+            "student_name": "Student"
+        }
+
+if "chat_history" not in st.session_state:
+    st.session_state.chat_history = []
+if "schedule_summary" not in st.session_state:
+    st.session_state.schedule_summary = ""
+if "math_summary" not in st.session_state:
+    st.session_state.math_summary = ""
+if "rw_summary" not in st.session_state:
+    st.session_state.rw_summary = ""
+if "tutor_summary" not in st.session_state:
+    st.session_state.tutor_summary = ""
+
+
+
+
+@st.fragment
+def render_narrator_summary(student_id, session_token, active_token, state_code, target_test_date, pacing_strategy, student_name):
+    with st.container(border=True):
+        with st.spinner("🤖 Writing study guide and practice problems..."):
+            sum_resp = process_secure_request(
+                "GET_SUMMARIES",
+                student_id,
+                session_token,
+                active_token,
+                {
+                    "state_code": state_code,
+                    "target_test_date": target_test_date,
+                    "pacing_strategy": pacing_strategy,
+                    "student_name": student_name
+                }
+            )
+            if sum_resp["status"] == "success":
+                sum_data = sum_resp.get("data", {})
+                st.session_state.schedule_summary = sum_data.get("schedule_summary", "")
+                st.session_state.math_summary = sum_data.get("math_summary", "")
+                st.session_state.rw_summary = sum_data.get("rw_summary", "")
+                st.session_state.tutor_summary = sum_data.get("tutor_summary", "")
+                st.rerun()
+            else:
+                st.error("Could not load AI study guide.")
+
 # --- HEADER ---
 
 
-# --- LEFT PANEL (Slide-in Sidebar) ---
-with st.sidebar:
-    st.header("Student Profile")
-    saved_state = st.session_state.student_profile.get("state_code", "WA")
-    state_idx = STATES_LIST.index(saved_state) if saved_state in STATES_LIST else 0
-    state_code = st.selectbox("State", STATES_LIST, index=state_idx)
-    
-    saved_grad_year = st.session_state.student_profile.get("graduation_year", 2028)
-    graduation_year = st.number_input("Graduation Year", min_value=2026, max_value=2035, value=int(saved_grad_year))
-    if st.button("Save Profile", use_container_width=True):
-        payload = {
-            "state_code": state_code,
-            "graduation_year": graduation_year,
-            "target_test_date": st.session_state.student_profile.get("target_test_date", "")
-        }
-        resp = process_secure_request("SAVE_PROFILE", CURRENT_STUDENT_ID, SESSION_TOKEN, ACTIVE_TOKEN, payload)
-        if resp["status"] == "success":
-            st.session_state.student_profile["state_code"] = state_code
-            st.session_state.student_profile["graduation_year"] = graduation_year
-            build_schedule_from_db()
-            #st.success("Saved!")
-            st.rerun()
-        else:
-            st.error(resp["message"])
-            
-    st.divider()
-    import time
-
-    st.header("Save your recent test results")
-    date_test_taken = st.date_input("Test Date")
-    math_score = st.number_input("Math Score", min_value=160, max_value=800, value=500, step=10)
-    rw_score = st.number_input("R/W Score", min_value=160, max_value=800, value=500, step=10)
-
-    if st.button("Log Scores", use_container_width=True):
-        payload = {
-            "date_test_taken": date_test_taken.strftime("%Y-%m-%d"), 
-            "math_score": math_score, 
-            "reading_writing_score": rw_score
-        }
-        
-        resp = process_secure_request("LOG_SCORES", CURRENT_STUDENT_ID, SESSION_TOKEN, ACTIVE_TOKEN, payload)
-        
-        if resp["status"] == "success":
-            # 1. Clear the cache so the app is forced to fetch the new scores
-            st.cache_data.clear() 
-            
-            # 2. Re-pull the fresh data into your session state
-            build_schedule_from_db()
-            
-            # 3. Show a toast or success message, then pause briefly before wiping the screen
-            st.success("Scores successfully saved!")
-            time.sleep(0.75) 
-            
-            # 4. Now trigger the UI refresh
-            st.rerun()
-        else:
-            st.error(resp["message"])
+# Sidebar content moved to top of file to ensure initial_sidebar_state="collapsed" is respected
 
 # --- MAIN LAYOUT ---
 center_col, right_col = st.columns([2.5, 1], gap="large")
 
-analytics_resp = process_secure_request("GET_ANALYTICS", CURRENT_STUDENT_ID, SESSION_TOKEN, ACTIVE_TOKEN, {})
-if analytics_resp["status"] == "success":
-    analytics_data = analytics_resp.get("data", {})
-    if "schedule_summary" in analytics_data:
-        st.session_state.schedule_summary = analytics_data.get("schedule_summary", "")
-    if "math_summary" in analytics_data:
-        st.session_state.math_summary = analytics_data.get("math_summary", "")
-    if "rw_summary" in analytics_data:
-        st.session_state.rw_summary = analytics_data.get("rw_summary", "")
-    if "tutor_summary" in analytics_data:
-        st.session_state.tutor_summary = analytics_data.get("tutor_summary", "")
-else:
-    st.error(f"Analytics Error: {analytics_resp.get('message')}")
-    analytics_data = {}
+if "analytics_data" not in st.session_state:
+    analytics_resp = process_secure_request("GET_ANALYTICS", _sid(), _tok(), _tok(), {})
+    if analytics_resp["status"] == "success":
+        st.session_state.analytics_data = analytics_resp.get("data", {})
+    else:
+        st.session_state.analytics_data = {}
+analytics_data = st.session_state.analytics_data
 
-# Initialize Schedule Data in Session State for Interactive Editing
+# Auto-rebuild schedule when a mastery checkbox was just toggled
+if st.session_state.get("syllabus_dirty"):
+    build_schedule_from_db()
+    st.session_state.syllabus_dirty = False
+
 # Initialize Schedule Data in Session State for Interactive Editing
 if "schedule_df" not in st.session_state:
     build_schedule_from_db()
 
 # --- CENTER COLUMN: CORE INTERFACE ---
 with center_col:
-    logo_file = "logo_cropped.png" if os.path.exists("logo_cropped.png") else "logo.png"
-    st.image(logo_file, use_container_width=True)
+    logo_file = "logo.webp" if os.path.exists("logo.webp") else None
+    st.image(logo_file, width="stretch")
     st.write("")
+
+    s_name = st.session_state.student_profile.get("student_name", "Student")
+    hdr_col, btn_col = st.columns([3, 1])
+    with hdr_col:
+        st.markdown(f"### 🎯 Welcome back, {s_name}!")
+    with btn_col:
+        with st.popover("👤 Student Profile", use_container_width=True):
+            import time as _time
+            st.subheader("👤 Student Profile")
+
+            saved_name = st.session_state.student_profile.get("student_name", "Student")
+            student_name_input = st.text_input("Name", value=saved_name, key="pop_name")
+
+            col_prof1, col_prof2 = st.columns(2)
+            with col_prof1:
+                saved_state = st.session_state.student_profile.get("state_code", "WA")
+                state_idx = STATES_LIST.index(saved_state) if saved_state in STATES_LIST else 0
+                state_code = st.selectbox("State", STATES_LIST, index=state_idx, key="pop_state")
+            with col_prof2:
+                saved_grad_year = st.session_state.student_profile.get("graduation_year", 2028)
+                graduation_year = st.number_input("Grad Year", min_value=2027, max_value=2035, value=int(saved_grad_year), key="pop_grad")
+
+            if st.button("Update my profile", width="stretch", key="pop_update_profile"):
+                payload = {
+                    "state_code": state_code,
+                    "graduation_year": graduation_year,
+                    "target_test_date": st.session_state.student_profile.get("target_test_date", ""),
+                    "student_name": student_name_input
+                }
+                resp = process_secure_request("SAVE_PROFILE", _sid(), _tok(), _tok(), payload)
+                if resp["status"] == "success":
+                    st.session_state.student_profile["state_code"] = state_code
+                    st.session_state.student_profile["graduation_year"] = graduation_year
+                    st.session_state.student_profile["student_name"] = student_name_input
+                    if "analytics_data" in st.session_state:
+                        del st.session_state.analytics_data
+                    build_schedule_from_db()
+                    st.rerun()
+                else:
+                    show_friendly_error(resp["message"])
+
+            st.divider()
+            st.subheader("📊 Log Test Results")
+
+            date_test_taken = st.date_input("Date", key="pop_date")
+
+            col_sc1, col_sc2 = st.columns(2)
+            with col_sc1:
+                math_score = st.number_input("Math Score", min_value=160, max_value=800, value=500, step=10, key="pop_math")
+            with col_sc2:
+                rw_score = st.number_input("RW Score", min_value=160, max_value=800, value=500, step=10, key="pop_rw")
+
+            if st.button("Log Scores", width="stretch", key="pop_log_scores"):
+                payload = {
+                    "date_test_taken": date_test_taken.strftime("%Y-%m-%d"),
+                    "math_score": math_score,
+                    "reading_writing_score": rw_score
+                }
+                resp = process_secure_request("LOG_SCORES", _sid(), _tok(), _tok(), payload)
+                if resp["status"] == "success":
+                    st.cache_data.clear()
+                    if "analytics_data" in st.session_state:
+                        del st.session_state.analytics_data
+                    build_schedule_from_db()
+                    st.success("✅ Scores saved!")
+                    _time.sleep(0.75)
+                    st.rerun()
+                else:
+                    show_friendly_error(resp["message"])
+
+            st.divider()
+            if st.button("🚪 Sign Out", width="stretch", key="sign_out_btn"):
+                if st.session_state.get("is_guest"):
+                    process_secure_request("TEARDOWN_GUEST", "guest_demo", _tok(), _tok(), {})
+                clear_all_state()
+                st.session_state.logged_in = False
+                st.session_state.student_id = ""
+                st.session_state.session_token = ""
+                st.session_state.tamper_token = False
+                st.rerun()
+
     st.write("")
-    
+
+
     # ---- 3. CENTRAL CONTENT AREA ----
     tab1, tab2, tab3, tab4 = st.tabs([
         "\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0**🗓️ Master Academic Schedule**\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0|", 
@@ -194,7 +371,17 @@ with center_col:
         with col_mid:
             # 0. Executive Summary from Narrator Agent
             narrative = st.session_state.get("schedule_summary", "")
-            if narrative:
+            if not narrative:
+                render_narrator_summary(
+                    student_id=_sid(),
+                    session_token=_tok(),
+                    active_token=_tok(),
+                    state_code=st.session_state.student_profile.get("state_code", "WA"),
+                    target_test_date=st.session_state.student_profile.get("target_test_date", ""),
+                    pacing_strategy=st.session_state.get("pacing_strategy", ""),
+                    student_name=st.session_state.student_profile.get("student_name", "Student")
+                )
+            else:
                 with st.container(border=True):
                     st.markdown(narrative)
 
@@ -213,9 +400,10 @@ with center_col:
                     "Future Test Date",
                     value=saved_date_obj,
                     label_visibility="collapsed",
+                    on_change=clear_date_error
                 )
             with row_col2:
-                if st.button("Save", use_container_width=True, key="save_test_date_btn"):
+                if st.button("Save", width="stretch", key="save_test_date_btn"):
                     date_str = test_date_input.strftime("%Y-%m-%d") if test_date_input else ""
                     state_code = st.session_state.student_profile.get("state_code", "WA")
                     graduation_year = st.session_state.student_profile.get("graduation_year", 2028)
@@ -226,23 +414,27 @@ with center_col:
                     }
                     save_resp = process_secure_request(
                         "SAVE_PROFILE",
-                        CURRENT_STUDENT_ID,
-                        SESSION_TOKEN,
-                        ACTIVE_TOKEN,
+                        _sid(),
+                        _tok(),
+                        _tok(),
                         save_payload,
                     )
                     if save_resp["status"] == "success":
                         st.session_state.student_profile["target_test_date"] = date_str
+                        if "analytics_data" in st.session_state:
+                            del st.session_state.analytics_data
+                        invalidate_summaries()
                         build_schedule_from_db()
                         st.rerun()
                     else:
-                        st.error(save_resp["message"])
+                        st.session_state.save_date_error = save_resp["message"]
+                        st.rerun()
             with row_col3:
                 ics_resp = process_secure_request(
                     "EXPORT_ICS",
-                    CURRENT_STUDENT_ID,
-                    SESSION_TOKEN,
-                    ACTIVE_TOKEN,
+                    _sid(),
+                    _tok(),
+                    _tok(),
                     {"schedule_df": st.session_state.schedule_df},
                 )
                 if ics_resp["status"] == "success":
@@ -253,15 +445,18 @@ with center_col:
                             data=f,
                             file_name="schedule.ics",
                             mime="text/calendar",
-                            use_container_width=True,
+                            width="stretch",
                             key="dl_ics_btn",
                         )
                 else:
-                    st.error(ics_resp["message"])
+                    show_friendly_error(ics_resp["message"])
 
+            if "save_date_error" in st.session_state and st.session_state.save_date_error:
+                st.write("")
+                show_friendly_error(st.session_state.save_date_error)
 
             if "schedule_error" in st.session_state:
-                st.error(st.session_state.schedule_error)
+                show_friendly_error(st.session_state.schedule_error)
             elif not st.session_state.schedule_df.empty:
                 display_df = st.session_state.schedule_df[["Week", "Math Focus", "Reading & Writing Focus"]].copy()
                 display_df = display_df.set_index("Week")
@@ -277,16 +472,18 @@ with center_col:
         with box:
             math_text = st.session_state.get("math_summary", "")
             if not math_text:
-                math_text = "Do you believe you already know some of this to the point you do not need to practice anymore? Look through the plan for math concepts, solving problems, and formulas, and check what you know. Clicking the Update my Schedule button will exclude these topics from your weekly study tasks so you can focus strictly on new material (and you can always uncheck them to bring them back)."
+                math_text = (
+                    "Look through the Math concept list below and check off anything you have already mastered. "
+                    "Once checked, that topic is automatically removed from your weekly schedule so you can focus on what is new. "
+                    'Not sure whether you know a topic well enough? Click the question mark (?) button next to it for an instant AI explanation. '
+                    "You can uncheck any topic at any time to bring it back into your plan."
+                )
             st.markdown(math_text)
-            if st.button("Update my Schedule", use_container_width=True, key="update_schedule_math"):
-                build_schedule_from_db()
-                st.rerun()
         process_secure_request(
             "RENDER_SYLLABUS",
-            CURRENT_STUDENT_ID,
-            SESSION_TOKEN,
-            ACTIVE_TOKEN,
+            _sid(),
+            _tok(),
+            _tok(),
             {
                 "syllabus_file": "agents/skills/curriculum_mapper/math_granular_syllabus.json",
                 "marker_class": "math-timeline-marker",
@@ -303,16 +500,18 @@ with center_col:
         with box:
             rw_text = st.session_state.get("rw_summary", "")
             if not rw_text:
-                rw_text = "Do you believe you already know some of this to the point you do not need to practice anymore? Look through the plan for reading comprehension, grammar, and evidence-based writing, and check what you know. Clicking the Update my Schedule button will exclude these topics from your weekly study tasks so you can focus strictly on new material (and you can always uncheck them to bring them back)."
+                rw_text = (
+                    "Look through the Reading and Writing skill list below and check off anything you have already mastered. "
+                    "Once checked, that skill is automatically removed from your weekly schedule so your prep time goes toward what is still new. "
+                    'Not sure whether you have truly nailed a skill? Click the question mark (?) button next to it for an instant AI explanation. '
+                    "You can uncheck any skill at any time to bring it back into your plan."
+                )
             st.markdown(rw_text)
-            if st.button("Update my Schedule", use_container_width=True, key="update_schedule_rw"):
-                build_schedule_from_db()
-                st.rerun()
         process_secure_request(
             "RENDER_SYLLABUS",
-            CURRENT_STUDENT_ID,
-            SESSION_TOKEN,
-            ACTIVE_TOKEN,
+            _sid(),
+            _tok(),
+            _tok(),
             {
                 "syllabus_file": "agents/skills/curriculum_mapper/rw_granular_syllabus.json",
                 "marker_class": "rw-timeline-marker",
@@ -332,26 +531,36 @@ with center_col:
         st.markdown(tutor_text)
         @st.fragment
         def tutor_chat():
-            with st.container(height=300):
-                for msg in st.session_state.chat_history:
-                    with st.chat_message(msg["role"]):
-                        st.write(msg["content"])
-                        
-            user_input = st.chat_input("Ask a question...", key="tutor_input")
-            if user_input:
+            col_input, col_btn = st.columns([5, 1])
+            with col_input:
+                user_input = st.text_input(
+                    "Ask a question",
+                    placeholder="Type your question here...",
+                    label_visibility="collapsed",
+                    key="tutor_input",
+                )
+            with col_btn:
+                send_clicked = st.button("Send", key="tutor_send", use_container_width=True)
+
+            if send_clicked and user_input:
                 st.session_state.chat_history.append({"role": "user", "content": user_input})
-                
+
                 with st.spinner("Thinking..."):
                     recent_context = st.session_state.chat_history[-4:]
                     payload = {"message": user_input, "recent_context": recent_context}
                     response = process_secure_request(
-                        "TUTOR_CHAT", CURRENT_STUDENT_ID, SESSION_TOKEN, ACTIVE_TOKEN, payload
+                        "TUTOR_CHAT", _sid(), _tok(), _tok(), payload
                     )
                     answer = response.get("data", "Error: Could not reach Tutor Agent.")
-                
+
                 st.session_state.chat_history.append({"role": "assistant", "content": answer})
                 st.rerun()
 
+            with st.container(height=400):
+                for msg in st.session_state.chat_history:
+                    with st.chat_message(msg["role"]):
+                        st.write(msg["content"])
+                        
         tutor_chat()
 
 
@@ -381,11 +590,11 @@ with right_col:
     
     # Render Recent Score card
     with st.container(border=True):
-        header_img = "scr.png" if os.path.exists("scr.png") else ""
+        header_img = "scr.webp" if os.path.exists("scr.webp") else ""
         if header_img:
             col_img_l, col_img_mid, col_img_r = st.columns([1, 2.5, 1])
             with col_img_mid:
-                st.image(header_img, use_container_width=True)
+                st.image(header_img, width="stretch")
         else:
             st.subheader("Your Recent Score")
         st.metric("Total", f"{recent_total}" if recent_total > 0 else "-", delta=total_delta)
@@ -403,7 +612,7 @@ with right_col:
         latest_math = 500
         latest_rw = 500
         
-    pred_resp = process_secure_request("CALCULATE_NMSI", CURRENT_STUDENT_ID, SESSION_TOKEN, ACTIVE_TOKEN, {"scores": {"rw": latest_rw, "math": latest_math}})
+    pred_resp = process_secure_request("CALCULATE_NMSI", _sid(), _tok(), _tok(), {"scores": {"rw": latest_rw, "math": latest_math}})
     pred_nmsi = pred_resp.get("data", "-") if pred_resp["status"] == "success" else "-"
     state_cutoff = analytics_data.get('nmsi_cutoff', '-')
     state_code = st.session_state.student_profile.get("state_code", "WA")
@@ -436,7 +645,7 @@ with right_col:
     with st.container(border=True):
         st.subheader("NMSI Index Simulator")
         sim_math = st.slider("Simulated Math Score", min_value=160, max_value=800, value=500, step=10, key="sim_math_slider")
-        sim_rw = st.slider("Simulated R/W Score", min_value=160, max_value=800, value=500, step=10, key="sim_rw_slider")
+        sim_rw = st.slider("Simulated RW Score", min_value=160, max_value=800, value=500, step=10, key="sim_rw_slider")
         sim_nmsi = int(((2 * sim_rw) + sim_math) / 10)
         
         col_sim_pred, col_sim_cut = st.columns(2)
@@ -453,3 +662,9 @@ with right_col:
             st.success("With these scores, you would meet the cutoff!")
         else:
             st.markdown("> **Tip:** Slide the bar to see how PSAT scores affect NMSI Index.")
+
+# All summaries are now loaded lazily inside their respective tabs via st.fragment.
+
+if st.session_state.get("just_logged_in"):
+    st.session_state.just_logged_in = False
+    st.rerun()

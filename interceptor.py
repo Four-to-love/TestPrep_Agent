@@ -1,6 +1,11 @@
 import sqlite3
 import re
-from datetime import datetime
+import os
+import time
+import threading
+import secrets
+from collections import deque
+from datetime import datetime, date
 from constants import STATES_LIST
 # ==========================================
 # AGENT IMPORTS
@@ -18,22 +23,166 @@ from agents.skills.curriculum_mapper.scheduler_skill import generate_schedule
 from agents.skills.test_date_calculator.date_engine import calculate_test_date
 from agents.skills.syllabus_renderer import render_syllabus_timeline
 from agents.skills.calendar_export.export_ics import export_schedule_to_ics
+import bcrypt
+from mcp_client import call_mcp_tool
 
-# Import any other skills here!
-
-
-import os
 DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'student_state.db')
 
-def process_secure_request(action_type, student_id, session_token, active_token, payload):
+# ==========================================
+# SECURE PIN HASHING  (bcrypt, work factor 12)
+# Must be defined before init_credentials_table() is called below.
+# ==========================================
+_BCRYPT_ROUNDS = 12
+_SHA256_HEX_LEN = 64  # fingerprint of legacy unsalted SHA-256 hashes
+
+def _hash_pin(pin: str) -> str:
+    """Returns a bcrypt hash of the PIN encoded as UTF-8 for DB storage."""
+    return bcrypt.hashpw(pin.encode("utf-8"), bcrypt.gensalt(rounds=_BCRYPT_ROUNDS)).decode("utf-8")
+
+def _verify_pin(pin: str, stored_hash: str, student_id: str) -> bool:
     """
-    Zero-Trust interceptor. Validates all inputs and tokens before touching the DB.
+    Verifies a PIN against its stored hash.
+    Transparently migrates legacy unsalted SHA-256 hashes to bcrypt on first
+    successful login so existing accounts keep working without a forced reset.
+    """
+    import hashlib
+
+    # --- Legacy path: detect unsalted SHA-256 hex (64 lowercase hex chars) ---
+    if len(stored_hash) == _SHA256_HEX_LEN and all(c in "0123456789abcdef" for c in stored_hash):
+        legacy_hash = hashlib.sha256(pin.encode("utf-8")).hexdigest()
+        if legacy_hash != stored_hash:
+            return False
+        # Correct PIN — silently upgrade hash in DB
+        try:
+            new_hash = _hash_pin(pin)
+            conn = sqlite3.connect(DB_PATH)
+            c = conn.cursor()
+            c.execute(
+                "UPDATE student_credentials SET pin_hash = ? WHERE student_id = ?",
+                (new_hash, student_id)
+            )
+            conn.commit()
+            conn.close()
+            print(f"DEBUG: PIN hash migrated to bcrypt for {student_id}")
+        except Exception as e:
+            print(f"DEBUG: PIN migration failed for {student_id}: {e}")
+        return True
+
+    # --- Modern path: bcrypt constant-time check ---
+    try:
+        return bcrypt.checkpw(pin.encode("utf-8"), stored_hash.encode("utf-8"))
+    except Exception:
+        return False
+
+# ==========================================
+# RATE LIMITER (sliding-window, per-student)
+# ==========================================
+_RATE_LIMITS = {
+    "TUTOR_CHAT":   {"max_calls": 15, "window_seconds": 60},
+    "EXPAND_TOPIC": {"max_calls": 8,  "window_seconds": 60},
+}
+_rate_limit_store: dict = {}
+_rate_limit_lock = threading.Lock()
+
+def _check_rate_limit(student_id: str, action_type: str) -> dict | None:
+    """
+    Sliding-window rate limiter.
+    Returns None if the request is allowed, or an error dict if the limit is exceeded.
+    """
+    config = _RATE_LIMITS.get(action_type)
+    if not config:
+        return None
+    max_calls = config["max_calls"]
+    window = config["window_seconds"]
+    key = (student_id, action_type)
+    now = time.monotonic()
+    with _rate_limit_lock:
+        if key not in _rate_limit_store:
+            _rate_limit_store[key] = deque()
+        timestamps = _rate_limit_store[key]
+        cutoff = now - window
+        while timestamps and timestamps[0] < cutoff:
+            timestamps.popleft()
+        if len(timestamps) >= max_calls:
+            wait_secs = int(window - (now - timestamps[0])) + 1
+            return {
+                "status": "error",
+                "message": (
+                    f"Rate limit reached: maximum {max_calls} requests per "
+                    f"{window}s for {action_type}. "
+                    f"Please wait ~{wait_secs}s before trying again."
+                )
+            }
+        timestamps.append(now)
+    return None
+
+def init_credentials_table():
+    try:
+        # Idempotently bootstrap database tables
+        import db_setup
+        db_setup.create_database()
+
+        conn = sqlite3.connect(DB_PATH)
+        c = conn.cursor()
+        c.execute('''
+            CREATE TABLE IF NOT EXISTS student_credentials (
+                student_id TEXT PRIMARY KEY,
+                pin_hash TEXT
+            )
+        ''')
+
+        # Migration: Add student_name column to students table if not exists
+        try:
+            c.execute("ALTER TABLE students ADD COLUMN student_name TEXT DEFAULT 'Student'")
+            conn.commit()
+        except sqlite3.OperationalError:
+            pass  # Column already exists
+
+        c.execute("SELECT 1 FROM student_credentials WHERE student_id = 'student_001'")
+        if not c.fetchone():
+            default_pin = "1234"
+            pin_hash = _hash_pin(default_pin)  # bcrypt — safe because _hash_pin defined above
+            c.execute("INSERT INTO student_credentials (student_id, pin_hash) VALUES (?, ?)", ("student_001", pin_hash))
+            c.execute("SELECT 1 FROM students WHERE student_id = 'student_001'")
+            if not c.fetchone():
+                c.execute(
+                    "INSERT INTO students (student_id, state_code, graduation_year, target_test_date, student_name) VALUES (?, ?, ?, ?, ?)",
+                    ("student_001", "WA", 2028, "", "Alex")
+                )
+        else:
+            c.execute(
+                "UPDATE students SET student_name = 'Alex' WHERE student_id = 'student_001' "
+                "AND (student_name IS NULL OR student_name = '' OR student_name = 'Student')"
+            )
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        print(f"DEBUG: Failed to initialize student_credentials: {str(e)}")
+
+# Initialize credentials database (safe: _hash_pin is defined above)
+init_credentials_table()
+
+def sanitize_input_string(s: str) -> str:
+    """
+    Sanitizes string inputs to prevent XSS and SQL injection patterns.
+    """
+    if not s:
+        return ""
+    return re.sub(r'[<>\'"%;()&+]', '', s)
+
+def process_secure_request(action_type: str, student_id: str, session_token: str, active_token: str, payload: dict) -> dict:
+    """
+    Zero-Trust Security Gateway: Intercepts all client requests, validates identity,
+    authenticates active session token, and sanitizes payload parameters.
     Ensures structural integrity and prevents injection attacks.
     """
     # 1. Identity & Session Verification
-    if not session_token or session_token != active_token:
-        return {"status": "error", "message": "Security Alert: Invalid or expired session token."}
-    
+    # AUTHENTICATE, REGISTER_STUDENT, and AUTHENTICATE_GUEST bypass token check
+    # (they ARE the token-issuance endpoints).
+    if action_type not in ["AUTHENTICATE", "REGISTER_STUDENT", "AUTHENTICATE_GUEST"]:
+        if not session_token or session_token != active_token:
+            return {"status": "error", "message": "Security Alert: Invalid or expired session token."}
+
     if not re.match(r'^[a-zA-Z0-9_]+$', student_id):
         return {"status": "error", "message": "Security Alert: Invalid student ID format."}
 
@@ -43,48 +192,67 @@ def process_secure_request(action_type, student_id, session_token, active_token,
         grad_year = payload.get("graduation_year")
         has_test_date = "target_test_date" in payload
         target_test_date = payload.get("target_test_date") if has_test_date else ""
+        student_name = payload.get("student_name", "Student")
 
         if state_code not in STATES_LIST:
             return {"status": "error", "message": "Validation Error: Invalid state code."}
-        
+
         try:
             grad_year = int(grad_year)
-            if not (2026 <= grad_year <= 2032):
+            if not (2027 <= grad_year <= 2035):
                 raise ValueError
         except (ValueError, TypeError):
-            return {"status": "error", "message": "Validation Error: Graduation year must be between 2026 and 2032."}
+            return {"status": "error", "message": "Validation Error: Graduation year must be between 2027 and 2035."}
 
         try:
-            student_num = int(re.search(r'\d+', student_id).group())
-        except:
-            student_num = 1
-
-        try:
-            from mcp_server import save_student_profile
-            resp_str = save_student_profile(student_num, state_code, grad_year, target_test_date)
+            resp_str = call_mcp_tool("save_student_profile", {
+                "student_id": student_id,
+                "state_code": sanitize_input_string(state_code),
+                "graduation_year": grad_year,
+                "target_test_date": sanitize_input_string(target_test_date),
+                "student_name": sanitize_input_string(student_name)
+            })
             if resp_str.startswith("Success"):
                 return {"status": "success", "message": resp_str}
             return {"status": "error", "message": resp_str}
-        except Exception:
-            return {"status": "error", "message": "Service Connection Error: The profile update service is currently offline. Please try again later."}
+        except Exception as e:
+            return {"status": "error", "message": f"Service Connection Error: The profile update service is currently offline. Details: {str(e)}"}
 
     elif action_type == "GET_STUDENT":
         try:
-            conn = sqlite3.connect(DB_PATH)
-            conn.row_factory = sqlite3.Row
-            c = conn.cursor()
-            c.execute("SELECT state_code, graduation_year, target_test_date FROM students WHERE student_id = ?", (student_id,))
-            row = c.fetchone()
-            if not row:
-                c.execute("INSERT INTO students (student_id, state_code, graduation_year, target_test_date) VALUES (?, ?, ?, ?)",
-                          (student_id, "WA", 2028, ""))
-                conn.commit()
-                c.execute("SELECT state_code, graduation_year, target_test_date FROM students WHERE student_id = ?", (student_id,))
-                row = c.fetchone()
-            conn.close()
-            return {"status": "success", "data": dict(row)}
+            import json
+            resp_str = call_mcp_tool("fetch_student_profile", {"student_id": student_id})
+            resp = json.loads(resp_str)
+            if resp.get("status") == "success":
+                data = resp.get("data")
+                if student_id == "student_001" and (data.get("student_name") == "Student" or not data.get("student_name")):
+                    data["student_name"] = "Alex"
+                    call_mcp_tool("save_student_profile", {
+                        "student_id": student_id,
+                        "state_code": data.get("state_code", "WA"),
+                        "graduation_year": data.get("graduation_year", 2028),
+                        "target_test_date": data.get("target_test_date", ""),
+                        "student_name": "Alex"
+                    })
+                return {"status": "success", "data": data}
+            elif resp.get("status") == "not_found":
+                # Create on the fly via save_student_profile MCP tool
+                default_name = "Alex" if student_id == "student_001" else "Student"
+                call_mcp_tool("save_student_profile", {
+                    "student_id": student_id,
+                    "state_code": "WA",
+                    "graduation_year": 2028,
+                    "target_test_date": "",
+                    "student_name": default_name
+                })
+                # Re-fetch
+                resp_str = call_mcp_tool("fetch_student_profile", {"student_id": student_id})
+                resp = json.loads(resp_str)
+                if resp.get("status") == "success":
+                    return {"status": "success", "data": resp.get("data")}
+            return {"status": "error", "message": resp.get("message", "Could not fetch or create student profile.")}
         except Exception as e:
-            return {"status": "error", "message": f"Database Error: {str(e)}"}
+            return {"status": "error", "message": f"Database Service Error: {str(e)}"}
 
     elif action_type == "LOG_SCORES":
         date_test_taken = payload.get("date_test_taken")
@@ -101,18 +269,17 @@ def process_secure_request(action_type, student_id, session_token, active_token,
             return {"status": "error", "message": "Validation Error: Invalid score or date format."}
 
         try:
-            student_num = int(re.search(r'\d+', student_id).group())
-        except:
-            student_num = 1
-
-        try:
-            from mcp_server import log_student_scores
-            resp_str = log_student_scores(student_num, math_score, rw_score, date_test_taken)
+            resp_str = call_mcp_tool("log_student_scores", {
+                "student_id": student_id,
+                "math_score": math_score,
+                "rw_score": rw_score,
+                "date_test_taken": sanitize_input_string(date_test_taken)
+            })
             if resp_str.startswith("Success"):
                 return {"status": "success", "message": resp_str}
             return {"status": "error", "message": resp_str}
-        except Exception:
-            return {"status": "error", "message": "Service Connection Error: The score logging service is currently offline. Please try again later."}
+        except Exception as e:
+            return {"status": "error", "message": f"Service Connection Error: The score logging service is currently offline. Details: {str(e)}"}
 
     elif action_type == "GET_ANALYTICS":
         try:
@@ -173,25 +340,6 @@ def process_secure_request(action_type, student_id, session_token, active_token,
                 if "error" not in blueprint:
                     overall_focus = blueprint.get("overall_focus", "")
                     pacing_strategy = blueprint.get("pacing_strategy", "")
-                    narrator = NarratorAgent()
-                    schedule_summary = narrator.generate_schedule_summary(
-                        state_code=state_code,
-                        target_test_date=db_test_date,
-                        pacing_strategy=pacing_strategy
-                    )
-                    math_summary = narrator.generate_math_summary()
-                    rw_summary = narrator.generate_rw_summary()
-                    tutor_summary = narrator.generate_tutor_summary()
-                else:
-                    schedule_summary = ""
-                    math_summary = ""
-                    rw_summary = ""
-                    tutor_summary = ""
-            else:
-                schedule_summary = ""
-                math_summary = ""
-                rw_summary = ""
-                tutor_summary = ""
             
             conn.close()
             
@@ -207,37 +355,100 @@ def process_secure_request(action_type, student_id, session_token, active_token,
                     "nmsi_cutoff": target_cutoff,
                     "overall_focus": overall_focus,
                     "pacing_strategy": pacing_strategy,
-                    "schedule_summary": schedule_summary,
-                    "math_summary": math_summary,
-                    "rw_summary": rw_summary,
-                    "tutor_summary": tutor_summary
+                    "target_test_date": db_test_date
                 }
             }
 
         except Exception as e:
             return {"status": "error", "message": f"Analytics Database Error: {str(e)}"}
 
+    elif action_type == "GET_SUMMARIES":
+        state_code = payload.get("state_code", "WA")
+        target_test_date = payload.get("target_test_date")
+        pacing_strategy = payload.get("pacing_strategy", "")
+        summary_type = payload.get("summary_type")
+        
+        # Load profile settings via MCP tool for narrator context
+        grad_year = 2028
+        student_name = "Student"
+        try:
+            import json
+            resp_str = call_mcp_tool("fetch_student_profile", {"student_id": student_id})
+            resp = json.loads(resp_str)
+            if resp.get("status") == "success":
+                profile_data = resp.get("data", {})
+                grad_year = profile_data.get("graduation_year", 2028)
+                student_name = profile_data.get("student_name", "Student")
+        except Exception as e:
+            print(f"DEBUG: Failed to read student profile via MCP for summaries: {str(e)}")
+            
+        # Calculate days until test
+        days_until_test = None
+        if target_test_date:
+            try:
+                test_date = datetime.strptime(target_test_date, "%Y-%m-%d").date()
+                days_until_test = (test_date - datetime.now().date()).days
+                if days_until_test < 0:
+                    days_until_test = 0
+            except Exception:
+                pass
+                
+        try:
+            narrator = NarratorAgent()
+            if summary_type == "schedule":
+                res = narrator.generate_schedule_summary(state_code, target_test_date, pacing_strategy, grad_year, days_until_test, student_name)
+                return {"status": "success", "data": {"schedule_summary": res}}
+            elif summary_type == "math":
+                res = narrator.generate_math_summary()
+                return {"status": "success", "data": {"math_summary": res}}
+            elif summary_type == "rw":
+                res = narrator.generate_rw_summary()
+                return {"status": "success", "data": {"rw_summary": res}}
+            elif summary_type == "tutor":
+                res = narrator.generate_tutor_summary()
+                return {"status": "success", "data": {"tutor_summary": res}}
+            else:
+                import concurrent.futures
+                with concurrent.futures.ThreadPoolExecutor(max_workers=4) as executor:
+                    f_sched = executor.submit(narrator.generate_schedule_summary, state_code, target_test_date, pacing_strategy, grad_year, days_until_test, student_name)
+                    f_math = executor.submit(narrator.generate_math_summary)
+                    f_rw = executor.submit(narrator.generate_rw_summary)
+                    f_tutor = executor.submit(narrator.generate_tutor_summary)
+                    
+                    schedule_summary = f_sched.result()
+                    math_summary = f_math.result()
+                    rw_summary = f_rw.result()
+                    tutor_summary = f_tutor.result()
+                return {
+                    "status": "success",
+                    "data": {
+                        "schedule_summary": schedule_summary,
+                        "math_summary": math_summary,
+                        "rw_summary": rw_summary,
+                        "tutor_summary": tutor_summary
+                    }
+                }
+        except Exception as e:
+            return {"status": "error", "message": f"Summary Generation Error: {str(e)}"}
+
     elif action_type == "UPDATE_SYLLABUS":
         topic = payload.get("topic")
         is_completed = payload.get("is_completed")
-        
-        # Basic type validation
+
         if not isinstance(topic, str) or is_completed not in [0, 1]:
             return {"status": "error", "message": "Validation Error: Invalid syllabus data."}
 
         try:
-            student_num = int(re.search(r'\d+', student_id).group())
-        except:
-            student_num = 1
-
-        try:
-            from mcp_server import update_syllabus
-            resp_str = update_syllabus(student_num, topic, is_completed)
+            resp_str = call_mcp_tool("update_syllabus", {
+                "student_id": student_id,
+                "topic": sanitize_input_string(topic),
+                "is_completed": is_completed
+            })
             if resp_str.startswith("Success"):
                 return {"status": "success"}
             return {"status": "error", "message": resp_str}
-        except Exception:
-            return {"status": "error", "message": "Service Connection Error: The syllabus update service is currently offline. Please try again later."}
+        except Exception as e:
+            return {"status": "error", "message": f"Service Connection Error: The syllabus update service is currently offline. Details: {str(e)}"}
 
     elif action_type == "GET_SYLLABUS":
         try:
@@ -315,17 +526,6 @@ def process_secure_request(action_type, student_id, session_token, active_token,
             if "error" in blueprint:
                 return {"status": "error", "message": blueprint["error"]}
 
-            # Generate narrative summaries
-            narrator = NarratorAgent()
-            blueprint["schedule_summary"] = narrator.generate_schedule_summary(
-                state_code=state_code,
-                target_test_date=test_date_str,
-                pacing_strategy=blueprint.get("pacing_strategy", "")
-            )
-            blueprint["math_summary"] = narrator.generate_math_summary()
-            blueprint["rw_summary"] = narrator.generate_rw_summary()
-            blueprint["tutor_summary"] = narrator.generate_tutor_summary()
-
             # Return the finalized multi-grade schedule
             return {"status": "success", "data": blueprint}
 
@@ -336,16 +536,38 @@ def process_secure_request(action_type, student_id, session_token, active_token,
     # --- NEW: AGENT & SKILL DIRECT ROUTES ---
     # ==========================================
     elif action_type == "TUTOR_CHAT":
+        rate_err = _check_rate_limit(student_id, "TUTOR_CHAT")
+        if rate_err:
+            return rate_err
         tutor = SyllabusTutorAgent()
         message = payload.get("message", "")
         recent_context = payload.get("recent_context", [])
         return {"status": "success", "data": tutor.answer_question(message, recent_context)}
 
     elif action_type == "EXPAND_TOPIC":
+        rate_err = _check_rate_limit(student_id, "EXPAND_TOPIC")
+        if rate_err:
+            return rate_err
         expander = TopicExpanderAgent()
         topic_name = payload.get("topic_name", "")
         category = payload.get("category", None)
-        return {"status": "success", "data": expander.expand_topic(topic_name, category)}
+        
+        # Load profile settings from DB
+        grad_year = 2028
+        test_date = ""
+        try:
+            conn = sqlite3.connect(DB_PATH)
+            c = conn.cursor()
+            c.execute("SELECT graduation_year, target_test_date FROM students WHERE student_id = ?", (student_id,))
+            row = c.fetchone()
+            conn.close()
+            if row:
+                grad_year = row[0]
+                test_date = row[1]
+        except Exception as e:
+            print(f"DEBUG: Failed to read student profile for topic expander: {str(e)}")
+            
+        return {"status": "success", "data": expander.expand_topic(topic_name, category, grad_year, test_date)}
 
     elif action_type == "CALCULATE_NMSI":
         # 1. Grab the scores dictionary from the payload
@@ -398,5 +620,147 @@ def process_secure_request(action_type, student_id, session_token, active_token,
         except Exception as e:
             return {"status": "error", "message": f"ICS Export Error: {str(e)}"}
 
+
+    elif action_type == "AUTHENTICATE":
+        student_id_val = payload.get("student_id", "").strip()
+        pin = payload.get("pin", "").strip()
+        if not student_id_val or not pin:
+            return {"status": "error", "message": "Student ID and PIN are required."}
+
+        try:
+            conn = sqlite3.connect(DB_PATH)
+            c = conn.cursor()
+            c.execute("SELECT pin_hash FROM student_credentials WHERE student_id = ?", (student_id_val,))
+            row = c.fetchone()
+            conn.close()
+            if row and _verify_pin(pin, row[0], student_id_val):
+                session_token = secrets.token_hex(32)
+                return {"status": "success", "data": {"session_token": session_token}}
+            return {"status": "error", "message": "Invalid Student ID or PIN."}
+        except Exception as e:
+            return {"status": "error", "message": f"Database Error: {str(e)}"}
+
+    elif action_type == "REGISTER_STUDENT":
+        student_id_val = payload.get("student_id", "").strip()
+        pin = payload.get("pin", "").strip()
+        state_code = payload.get("state_code", "WA")
+        grad_year = payload.get("graduation_year", 2028)
+        target_test_date = payload.get("target_test_date", "")
+        student_name = payload.get("student_name", "").strip() or student_id_val
+
+        if not student_id_val or not pin:
+            return {"status": "error", "message": "Student ID and PIN are required."}
+
+        # Check target test date rule: must be <= Dec 1 of the year before graduation
+        if target_test_date:
+            try:
+                grad_year_val = int(grad_year)
+                test_date_obj = datetime.strptime(target_test_date, "%Y-%m-%d").date()
+                max_test_date = datetime(grad_year_val - 1, 12, 1).date()
+                if test_date_obj > max_test_date:
+                    return {"status": "error", "message": f"The latest date you can choose is December 1, {grad_year_val - 1}. December is the final testing window for your class."}
+            except (ValueError, TypeError):
+                return {"status": "error", "message": "Invalid test date format."}
+
+        pin_hash = _hash_pin(pin)
+
+        try:
+            conn = sqlite3.connect(DB_PATH)
+            c = conn.cursor()
+            c.execute("SELECT 1 FROM student_credentials WHERE student_id = ?", (student_id_val,))
+            if c.fetchone():
+                conn.close()
+                return {"status": "error", "message": "Student ID already exists. Please choose a different one."}
+            c.execute("INSERT INTO student_credentials (student_id, pin_hash) VALUES (?, ?)", (student_id_val, pin_hash))
+            conn.commit()
+            conn.close()
+
+            call_mcp_tool("save_student_profile", {
+                "student_id": student_id_val,
+                "state_code": sanitize_input_string(state_code),
+                "graduation_year": grad_year,
+                "target_test_date": sanitize_input_string(target_test_date),
+                "student_name": sanitize_input_string(student_name)
+            })
+
+            session_token = secrets.token_hex(32)
+            return {"status": "success", "data": {"session_token": session_token}}
+        except Exception as e:
+            return {"status": "error", "message": f"Database Error: {str(e)}"}
+
+    # ==========================================
+    # AUTHENTICATE_GUEST: Ephemeral sandbox session
+    # Seeds a temporary 11th-grade profile + mock scores so
+    # the StrategyEngine can function immediately.
+    # TEARDOWN_GUEST removes every trace on logout.
+    # ==========================================
+    elif action_type == "AUTHENTICATE_GUEST":
+        guest_id = "guest_demo"
+        today = date.today()
+        current_year = today.year
+        # 11th grader: graduates next calendar year
+        grad_year = current_year + 1
+        # Mock test date ~6 months out
+        test_date = (today.replace(month=today.month + 6) if today.month <= 6
+                     else today.replace(year=today.year + 1, month=today.month - 6)
+                     ).strftime("%Y-%m-%d")
+        try:
+            conn = sqlite3.connect(DB_PATH)
+            c = conn.cursor()
+
+            # Wipe any stale prior guest session (idempotent)
+            for sql in [
+                "DELETE FROM syllabus_progress WHERE student_id = ?",
+                "DELETE FROM practice_scores WHERE student_id = ?",
+                "DELETE FROM students WHERE student_id = ?",
+                "DELETE FROM student_credentials WHERE student_id = ?",
+            ]:
+                c.execute(sql, (guest_id,))
+
+            # Ephemeral bcrypt credentials (PIN is random, never exposed)
+            ephemeral_pin = secrets.token_hex(16)
+            c.execute(
+                "INSERT INTO student_credentials (student_id, pin_hash) VALUES (?, ?)",
+                (guest_id, _hash_pin(ephemeral_pin))
+            )
+            # Standard 11th-grade profile (WA, Primary SAT Year pacing)
+            c.execute(
+                "INSERT INTO students (student_id, state_code, graduation_year, target_test_date, student_name) "
+                "VALUES (?, ?, ?, ?, ?)",
+                (guest_id, "WA", grad_year, test_date, "Demo Student")
+            )
+            # Seed one mock score so the StrategyEngine focus label is non-trivial
+            c.execute(
+                "INSERT INTO practice_scores (student_id, date_test_taken, sat_total_score, math_score, reading_writing_score) "
+                "VALUES (?, ?, ?, ?, ?)",
+                (guest_id, today.strftime("%Y-%m-%d"), 1150, 580, 570)
+            )
+            conn.commit()
+            conn.close()
+
+            session_token = secrets.token_hex(32)
+            return {"status": "success", "data": {"session_token": session_token}}
+        except Exception as e:
+            return {"status": "error", "message": f"Guest initialization failed: {str(e)}"}
+
+    elif action_type == "TEARDOWN_GUEST":
+        # Hard-coded guard: this action may ONLY target guest_demo
+        if student_id != "guest_demo":
+            return {"status": "error", "message": "Security Alert: TEARDOWN_GUEST can only target guest_demo."}
+        try:
+            conn = sqlite3.connect(DB_PATH)
+            c = conn.cursor()
+            for sql in [
+                "DELETE FROM syllabus_progress WHERE student_id = ?",
+                "DELETE FROM practice_scores WHERE student_id = ?",
+                "DELETE FROM students WHERE student_id = ?",
+                "DELETE FROM student_credentials WHERE student_id = ?",
+            ]:
+                c.execute(sql, (student_id,))
+            conn.commit()
+            conn.close()
+            return {"status": "success"}
+        except Exception as e:
+            return {"status": "error", "message": f"Guest teardown failed: {str(e)}"}
 
     return {"status": "error", "message": "Security Alert: Unknown action type."}

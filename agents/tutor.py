@@ -1,12 +1,13 @@
 import os
 import time
-from dotenv import load_dotenv
 from google import genai
 from google.genai import types
 
+from agents.llm_utils import call_gemini_with_retry, MAX_CHAT_TURNS
+from telemetry import log_llm_call
+
 class SyllabusTutorAgent:
     def __init__(self, *args, **kwargs):
-        load_dotenv()
         
         # Sanitize API key in environment to remove any trailing whitespace or carriage returns
         if "GEMINI_API_KEY" in os.environ:
@@ -32,24 +33,36 @@ class SyllabusTutorAgent:
         """Answers questions strictly using the loaded Markdown syllabus/tutor guide."""
         msg_lower = user_message.lower()
 
+        # Enforce hard ceiling on multi-agent/chat iteration loop
+        if len(recent_context or []) > MAX_CHAT_TURNS:
+            return "⚠️ Our chat has reached the session limit. Please refresh to start a new session."
+
         # If live client is active, attempt to generate live tutor responses
         if self.client:
+            t0 = time.time()
+            prompt = ""
             try:
+                # 1. Aggressive token-budgeting: Limit inputs
+                safe_message = user_message[:2000]
+                windowed_context = (recent_context or [])[-6:]
+                kb_excerpt = self.syllabus_content[:30000]
+
                 # Build transcript history
                 history_text = ""
-                if recent_context:
+                if windowed_context:
                     history_text = "\nRECENT CONVERSATION HISTORY:\n"
-                    for msg in recent_context:
+                    for msg in windowed_context:
                         role = "Student" if msg["role"] == "user" else "Tutor"
                         history_text += f"{role}: {msg['content']}\n\n"
 
                 prompt = (
-                    f"CONTEXT (SAT Tutor Guide):\n{self.syllabus_content}\n\n"
+                    f"CONTEXT (SAT Tutor Guide):\n{kb_excerpt}\n\n"
                     f"{history_text}"
-                    f"Student: {user_message}"
+                    f"Student: {safe_message}"
                 )
 
-                response = self.client.models.generate_content(
+                response = call_gemini_with_retry(
+                    self.client,
                     model="gemini-2.5-flash",
                     contents=prompt,
                     config=types.GenerateContentConfig(
@@ -61,8 +74,24 @@ class SyllabusTutorAgent:
                         )
                     )
                 )
+                latency_ms = int((time.time() - t0) * 1000)
+                log_llm_call(
+                    agent="tutor",
+                    prompt_chars=len(prompt),
+                    response_chars=len(response.text),
+                    latency_ms=latency_ms,
+                    status="ok"
+                )
                 return response.text
             except Exception as e:
+                latency_ms = int((time.time() - t0) * 1000)
+                log_llm_call(
+                    agent="tutor",
+                    prompt_chars=len(prompt) if prompt else 0,
+                    response_chars=0,
+                    latency_ms=latency_ms,
+                    status="error"
+                )
                 print(f"DEBUG: Tutor Agent live generation failed: {str(e)}")
 
         # Fallback Mock Tutor Responses
