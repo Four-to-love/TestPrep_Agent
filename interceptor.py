@@ -170,6 +170,26 @@ def sanitize_input_string(s: str) -> str:
         return ""
     return re.sub(r'[<>\'"%;()&+]', '', s)
 
+def _validate_test_date(target_test_date: str, grad_year: int) -> str | None:
+    """
+    Enforces the rule: target test date must be on or before December 1
+    of the student's junior year (grad_year - 1).
+    Returns an error message string if invalid, or None if valid.
+    """
+    try:
+        test_date_obj = datetime.strptime(target_test_date, "%Y-%m-%d").date()
+        max_test_date = datetime(int(grad_year) - 1, 12, 1).date()
+        if test_date_obj > max_test_date:
+            return (
+                f"Please check your test date. "
+                f"For the class of {grad_year}, the last available SAT/PSAT testing window "
+                f"is December 1, {int(grad_year) - 1} \u2014 the final test date of your junior year. "
+                f"Choose a date on or before December 1, {int(grad_year) - 1}."
+            )
+    except (ValueError, TypeError):
+        return "Invalid test date format. Please use a valid date."
+    return None
+
 def process_secure_request(action_type: str, student_id: str, session_token: str, active_token: str, payload: dict) -> dict:
     """
     Zero-Trust Security Gateway: Intercepts all client requests, validates identity,
@@ -203,6 +223,12 @@ def process_secure_request(action_type: str, student_id: str, session_token: str
                 raise ValueError
         except (ValueError, TypeError):
             return {"status": "error", "message": "Validation Error: Graduation year must be between 2027 and 2035."}
+
+        # Check target test date rule: must be <= Dec 1 of junior year
+        if target_test_date:
+            date_error = _validate_test_date(target_test_date, grad_year)
+            if date_error:
+                return {"status": "error", "message": date_error}
 
         try:
             resp_str = call_mcp_tool("save_student_profile", {
@@ -653,14 +679,9 @@ def process_secure_request(action_type: str, student_id: str, session_token: str
 
         # Check target test date rule: must be <= Dec 1 of the year before graduation
         if target_test_date:
-            try:
-                grad_year_val = int(grad_year)
-                test_date_obj = datetime.strptime(target_test_date, "%Y-%m-%d").date()
-                max_test_date = datetime(grad_year_val - 1, 12, 1).date()
-                if test_date_obj > max_test_date:
-                    return {"status": "error", "message": f"The latest date you can choose is December 1, {grad_year_val - 1}. December is the final testing window for your class."}
-            except (ValueError, TypeError):
-                return {"status": "error", "message": "Invalid test date format."}
+            date_error = _validate_test_date(target_test_date, grad_year)
+            if date_error:
+                return {"status": "error", "message": date_error}
 
         pin_hash = _hash_pin(pin)
 

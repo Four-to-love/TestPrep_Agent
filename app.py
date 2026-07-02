@@ -106,12 +106,12 @@ def build_schedule_from_db():
 # --- LOGIN SIGN-IN PAGE TRIGGER ---
 if not st.session_state.logged_in:
     logo_file = "logo.webp" if os.path.exists("logo.webp") else None
-    st.image(logo_file, width="stretch")
-    st.write("")
 
     # --- HERO DEMO BUTTON (full-width, right under banner) ---
-    col_a, col_b, col_c = st.columns([1, 2, 1])
+    col_a, col_b, col_c = st.columns([1, 3, 1])
     with col_b:
+        st.image(logo_file, width="stretch")
+        st.write("")
         st.caption("✦ No account needed · See your personalized SAT plan in seconds")
         if st.button("✨  Try the Interactive Demo", width="stretch", type="primary", key="guest_demo_btn"):
             guest_resp = process_secure_request(
@@ -156,42 +156,42 @@ if not st.session_state.logged_in:
                     st.rerun()
                 else:
                     show_friendly_error(auth_resp["message"])
-        else:
-            st.subheader("📝 Create Account")
-            reg_name_input = st.text_input("Your Name", placeholder="e.g. Alex Smith")
-            reg_id_input = st.text_input("Choose Username", placeholder="e.g. smart_fox")
-            reg_pin_input = st.text_input("Choose PIN", type="password", placeholder="e.g. 4-digit code")
+            else:
+                st.subheader("📝 Create Account")
+                reg_name_input = st.text_input("Your Name", placeholder="e.g. Alex Smith")
+                reg_id_input = st.text_input("Choose Username", placeholder="e.g. smart_fox")
+                reg_pin_input = st.text_input("Choose PIN", type="password", placeholder="e.g. 4-digit code")
 
-            reg_state = st.selectbox("State", STATES_LIST, index=STATES_LIST.index("WA") if "WA" in STATES_LIST else 0, key="reg_state_code")
-            reg_grad_year = st.number_input("Grad Year", min_value=2027, max_value=2035, value=2028, key="reg_grad_year")
+                reg_state = st.selectbox("State", STATES_LIST, index=STATES_LIST.index("WA") if "WA" in STATES_LIST else 0, key="reg_state_code")
+                reg_grad_year = st.number_input("Grad Year", min_value=2027, max_value=2035, value=2028, key="reg_grad_year")
 
-            st.write("")
-            if st.button("Register & Login", width="stretch", type="primary", key="register_submit_btn"):
-                if not reg_id_input.strip() or not reg_pin_input.strip() or not reg_name_input.strip():
-                    show_friendly_error("Please enter Your Name, Username, and PIN.")
-                else:
-                    reg_resp = process_secure_request(
-                        "REGISTER_STUDENT",
-                        reg_id_input.strip(),
-                        "", "",
-                        {
-                            "student_id": reg_id_input.strip(),
-                            "pin": reg_pin_input.strip(),
-                            "state_code": reg_state,
-                            "graduation_year": reg_grad_year,
-                            "target_test_date": "",
-                            "student_name": reg_name_input.strip()
-                        }
-                    )
-                    if reg_resp["status"] == "success":
-                        clear_all_state()
-                        st.session_state.student_id = reg_id_input.strip()
-                        st.session_state.session_token = reg_resp["data"]["session_token"]
-                        st.session_state.logged_in = True
-                        st.session_state.just_logged_in = True
-                        st.rerun()
+                st.write("")
+                if st.button("Register & Login", width="stretch", type="primary", key="register_submit_btn"):
+                    if not reg_id_input.strip() or not reg_pin_input.strip() or not reg_name_input.strip():
+                        show_friendly_error("Please enter Your Name, Username, and PIN.")
                     else:
-                        show_friendly_error(reg_resp["message"])
+                        reg_resp = process_secure_request(
+                            "REGISTER_STUDENT",
+                            reg_id_input.strip(),
+                            "", "",
+                            {
+                                "student_id": reg_id_input.strip(),
+                                "pin": reg_pin_input.strip(),
+                                "state_code": reg_state,
+                                "graduation_year": reg_grad_year,
+                                "target_test_date": "",
+                                "student_name": reg_name_input.strip()
+                            }
+                        )
+                        if reg_resp["status"] == "success":
+                            clear_all_state()
+                            st.session_state.student_id = reg_id_input.strip()
+                            st.session_state.session_token = reg_resp["data"]["session_token"]
+                            st.session_state.logged_in = True
+                            st.session_state.just_logged_in = True
+                            st.rerun()
+                        else:
+                            show_friendly_error(reg_resp["message"])
     st.stop()
 
 # Initialize student profile when logged in
@@ -456,7 +456,7 @@ with center_col:
 
             if "save_date_error" in st.session_state and st.session_state.save_date_error:
                 st.write("")
-                show_friendly_error(st.session_state.save_date_error)
+                st.info(st.session_state.save_date_error)
 
             if "schedule_error" in st.session_state:
                 show_friendly_error(st.session_state.schedule_error)
