@@ -108,51 +108,54 @@ if not st.session_state.logged_in:
     logo_file = "logo.webp" if os.path.exists("logo.webp") else None
     st.image(logo_file, width="stretch")
     st.write("")
-    st.write("")
-    
+
+    # --- HERO DEMO BUTTON (full-width, right under banner) ---
     col_a, col_b, col_c = st.columns([1, 2, 1])
     with col_b:
+        st.caption("✦ No account needed · See your personalized SAT plan in seconds")
+        if st.button("✨  Try the Interactive Demo", width="stretch", type="primary", key="guest_demo_btn"):
+            guest_resp = process_secure_request(
+                "AUTHENTICATE_GUEST", "guest_demo", "", "", {}
+            )
+            if guest_resp["status"] == "success":
+                clear_all_state()
+                st.session_state.student_id = "guest_demo"
+                st.session_state.session_token = guest_resp["data"]["session_token"]
+                st.session_state.logged_in = True
+                st.session_state.is_guest = True
+                st.session_state.just_logged_in = True
+                st.rerun()
+            else:
+                show_friendly_error(guest_resp.get("message", "Demo initialization failed."))
+
+        st.write("")
+        st.divider()
+
+        # --- SIGN IN / REGISTER FORM (below the demo hero) ---
         mode = st.radio("Choose Mode", ["Sign In", "Register"], horizontal=True, label_visibility="collapsed")
-        
+
         if mode == "Sign In":
             st.subheader("🔑 Student Sign-In")
             login_id_input = st.text_input("Username", placeholder="e.g. smart_fox")
             pin_input = st.text_input("PIN", type="password", placeholder="e.g. 1234")
 
             st.write("")
-            login_btn_col, demo_btn_col = st.columns([1, 1])
-            with login_btn_col:
-                if st.button("Sign In", width="stretch", type="primary", key="sign_in_primary_btn"):
-                    auth_resp = process_secure_request(
-                        "AUTHENTICATE",
-                        login_id_input.strip(),
-                        "", "",
-                        {"student_id": login_id_input.strip(), "pin": pin_input.strip()}
-                    )
-                    if auth_resp["status"] == "success":
-                        clear_all_state()
-                        st.session_state.student_id = login_id_input.strip()
-                        st.session_state.session_token = auth_resp["data"]["session_token"]
-                        st.session_state.logged_in = True
-                        st.session_state.just_logged_in = True
-                        st.rerun()
-                    else:
-                        show_friendly_error(auth_resp["message"])
-            with demo_btn_col:
-                if st.button("✨ Interactive Demo", width="stretch", key="guest_demo_btn"):
-                    guest_resp = process_secure_request(
-                        "AUTHENTICATE_GUEST", "guest_demo", "", "", {}
-                    )
-                    if guest_resp["status"] == "success":
-                        clear_all_state()
-                        st.session_state.student_id = "guest_demo"
-                        st.session_state.session_token = guest_resp["data"]["session_token"]
-                        st.session_state.logged_in = True
-                        st.session_state.is_guest = True
-                        st.session_state.just_logged_in = True
-                        st.rerun()
-                    else:
-                        show_friendly_error(guest_resp.get("message", "Demo initialization failed."))
+            if st.button("Sign In", width="stretch", type="primary", key="sign_in_primary_btn"):
+                auth_resp = process_secure_request(
+                    "AUTHENTICATE",
+                    login_id_input.strip(),
+                    "", "",
+                    {"student_id": login_id_input.strip(), "pin": pin_input.strip()}
+                )
+                if auth_resp["status"] == "success":
+                    clear_all_state()
+                    st.session_state.student_id = login_id_input.strip()
+                    st.session_state.session_token = auth_resp["data"]["session_token"]
+                    st.session_state.logged_in = True
+                    st.session_state.just_logged_in = True
+                    st.rerun()
+                else:
+                    show_friendly_error(auth_resp["message"])
         else:
             st.subheader("📝 Create Account")
             reg_name_input = st.text_input("Your Name", placeholder="e.g. Alex Smith")
