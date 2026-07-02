@@ -18,16 +18,40 @@ Most high school students lack access to personalized tutoring, leaving them to 
 ## 🏗️ System Architecture
 The application utilizes a decoupled, three-agent architecture coordinated via a centralized security **Zero-Trust Gateway (`interceptor.py`)**.
 
+---
+
+
+
 ```mermaid
 flowchart TD
-    UI["🖥️ Streamlit UI"] --> GW["🔒 Interceptor / Gateway"]
+    UI["🖥️ Streamlit UI (app.py)"]
+    GW["🔒 Interceptor / Zero-Trust Gateway"]
+    MCP["🔧 MCP Microserver (mcp_server.py)"]
+    DB[("🗄️ SQLite DB")]
+
+    UI -->|"All requests"| GW
+    GW -->|"Tool calls"| MCP
+    MCP <--> DB
+
     GW --> SE["⚙️ Strategy Engine"]
     GW --> NA["🎙️ Narrator Agent"]
-    GW --> TE["🔎 Topic Expander"]
+    GW --> TE["🔎 Topic Expander Agent"]
     GW --> TU["💬 Tutor Agent"]
-    GW --> MCP["🔧 MCP Microserver"]
-    MCP <--> DB[("🗄️ SQLite DB")]
+
+    SE --> CM["📅 Curriculum Mapper"]
+    SE --> DC["🗓️ Date Calculator"]
+
+    NA --> CM
+    NA --> DC
+
+    TE --> MCP
+
+    GW --> NM["📊 NMSI Calculator"]
+    GW --> SR["🧮 Syllabus Renderer"]
+    GW --> CE["📆 Calendar Export"]
 ```
+
+---
 
 ## 🤖 System Orchestration: The Agentic Core
 
