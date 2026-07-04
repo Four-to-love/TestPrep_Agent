@@ -156,7 +156,7 @@ if not st.session_state.logged_in:
                     st.rerun()
                 else:
                     show_friendly_error(auth_resp["message"])
-            else:
+        else:
                 st.subheader("📝 Create Account")
                 reg_name_input = st.text_input("Your Name", placeholder="e.g. Alex Smith")
                 reg_id_input = st.text_input("Choose Username", placeholder="e.g. smart_fox")
@@ -266,7 +266,13 @@ analytics_data = st.session_state.analytics_data
 # Auto-rebuild schedule when a mastery checkbox was just toggled
 if st.session_state.get("syllabus_dirty"):
     build_schedule_from_db()
-    st.session_state.syllabus_dirty = False
+    # Invalidate the three progress-aware narrator summaries so they
+    # regenerate with the updated mastered skill count and last/next skill names.
+    # Tutor summary is left intact — it depends on time, not mastery.
+    st.session_state.schedule_summary = ""
+    st.session_state.math_summary     = ""
+    st.session_state.rw_summary       = ""
+    st.session_state.syllabus_dirty   = False
 
 # Initialize Schedule Data in Session State for Interactive Editing
 if "schedule_df" not in st.session_state:
@@ -303,7 +309,6 @@ with center_col:
                 payload = {
                     "state_code": state_code,
                     "graduation_year": graduation_year,
-                    "target_test_date": st.session_state.student_profile.get("target_test_date", ""),
                     "student_name": student_name_input
                 }
                 resp = process_secure_request("SAVE_PROFILE", _sid(), _tok(), _tok(), payload)
@@ -361,20 +366,28 @@ with center_col:
     st.write("")
 
 
-    # ---- 3. CENTRAL CONTENT AREA ----
+    # ---- 3. NARRATOR GENERATION ----
+    # Deferred into tab1 as a fragment so the page and all tabs render
+    # instantly.  The fragment runs asynchronously inside the tab and
+    # calls st.rerun() when done, making the results available to tab2/tab3.
+
+    # ---- 4. CENTRAL CONTENT AREA ----
     tab1, tab2, tab3, tab4 = st.tabs([
-        "\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0**🗓️ Master Academic Schedule**\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0|", 
-        "\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0**📐 Mathematics Concept Plan**\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0|", 
-        "\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0**📚 Reading and Writing Plan**\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0|", 
+        "\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0**🗓️ Test Prep Schedule**\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0|",
+        "\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0**📐 Mathematics Curriculum**\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0|",
+        "\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0**📚 Reading and Writing Curriculum**\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0|",
         "\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0**💬 Chat with SAT Tutor**\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0"
     ])
     with tab1:
         # Center the control area inside tab1
         col_l, col_mid, col_r = st.columns([0.1, 4.0, 0.1])
         with col_mid:
-            # 0. Executive Summary from Narrator Agent
-            narrative = st.session_state.get("schedule_summary", "")
-            if not narrative:
+            # 0. Executive Summary from Narrator Agent.
+            # If any summary is missing, kick off the narrator fragment so it
+            # loads asynchronously without blocking the rest of the page.
+            if not st.session_state.get("schedule_summary") or \
+               not st.session_state.get("math_summary") or \
+               not st.session_state.get("rw_summary"):
                 render_narrator_summary(
                     student_id=_sid(),
                     session_token=_tok(),
@@ -385,6 +398,7 @@ with center_col:
                     student_name=st.session_state.student_profile.get("student_name", "Student")
                 )
             else:
+                narrative = st.session_state.get("schedule_summary", "")
                 with st.container(border=True):
                     st.markdown(narrative)
 
@@ -408,15 +422,11 @@ with center_col:
             with row_col2:
                 if st.button("Save", width="stretch", key="save_test_date_btn"):
                     date_str = test_date_input.strftime("%Y-%m-%d") if test_date_input else ""
-                    state_code = st.session_state.student_profile.get("state_code", "WA")
-                    graduation_year = st.session_state.student_profile.get("graduation_year", 2028)
                     save_payload = {
-                        "state_code": state_code,
-                        "graduation_year": graduation_year,
                         "target_test_date": date_str,
                     }
                     save_resp = process_secure_request(
-                        "SAVE_PROFILE",
+                        "SAVE_TARGET_DATE",
                         _sid(),
                         _tok(),
                         _tok(),
@@ -665,6 +675,20 @@ with right_col:
             st.success("With these scores, you would meet the cutoff!")
         else:
             st.markdown("> **Tip:** Slide the bar to see how PSAT scores affect NMSI Index.")
+
+    # Official Study Resources
+    with st.container(border=True):
+        st.subheader("Official Study Resources")
+        st.link_button(
+            "Bluebook Practice",
+            "https://bluebook.collegeboard.org/students/practice",
+            use_container_width=True,
+        )
+        st.link_button(
+            "Khan Academy SAT Prep",
+            "https://www.khanacademy.org/test-prep/digital-sat",
+            use_container_width=True,
+        )
 
 # All summaries are now loaded lazily inside their respective tabs via st.fragment.
 

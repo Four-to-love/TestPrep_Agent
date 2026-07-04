@@ -4,6 +4,7 @@ import os
 import time
 import threading
 import secrets
+import bcrypt
 from collections import deque
 from datetime import datetime, date
 from constants import STATES_LIST
@@ -23,7 +24,6 @@ from agents.skills.curriculum_mapper.scheduler_skill import generate_schedule
 from agents.skills.test_date_calculator.date_engine import calculate_test_date
 from agents.skills.syllabus_renderer import render_syllabus_timeline
 from agents.skills.calendar_export.export_ics import export_schedule_to_ics
-import bcrypt
 from mcp_client import call_mcp_tool
 
 DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'student_state.db')
@@ -78,8 +78,9 @@ def _verify_pin(pin: str, stored_hash: str, student_id: str) -> bool:
 # RATE LIMITER (sliding-window, per-student)
 # ==========================================
 _RATE_LIMITS = {
-    "TUTOR_CHAT":   {"max_calls": 15, "window_seconds": 60},
-    "EXPAND_TOPIC": {"max_calls": 8,  "window_seconds": 60},
+    "TUTOR_CHAT":    {"max_calls": 15, "window_seconds": 60},
+    "EXPAND_TOPIC":  {"max_calls": 8,  "window_seconds": 60},
+    "GET_SUMMARIES": {"max_calls": 8,  "window_seconds": 60},
 }
 _rate_limit_store: dict = {}
 _rate_limit_lock = threading.Lock()
@@ -172,12 +173,23 @@ def sanitize_input_string(s: str) -> str:
 
 def _validate_test_date(target_test_date: str, grad_year: int) -> str | None:
     """
-    Enforces the rule: target test date must be on or before December 1
-    of the student's junior year (grad_year - 1).
+    Enforces two rules:
+      1. Target test date must be today or in the future.
+      2. Target test date must be on or before December 1 of the student's
+         junior year (grad_year - 1).
     Returns an error message string if invalid, or None if valid.
     """
     try:
+        from datetime import date as _date
         test_date_obj = datetime.strptime(target_test_date, "%Y-%m-%d").date()
+
+        if test_date_obj < _date.today():
+            return (
+                "Please check your test date. "
+                "The date you selected is in the past. "
+                "Choose an upcoming test date."
+            )
+
         max_test_date = datetime(int(grad_year) - 1, 12, 1).date()
         if test_date_obj > max_test_date:
             return (
@@ -210,8 +222,6 @@ def process_secure_request(action_type: str, student_id: str, session_token: str
     if action_type == "SAVE_PROFILE":
         state_code = payload.get("state_code")
         grad_year = payload.get("graduation_year")
-        has_test_date = "target_test_date" in payload
-        target_test_date = payload.get("target_test_date") if has_test_date else ""
         student_name = payload.get("student_name", "Student")
 
         if state_code not in STATES_LIST:
@@ -224,7 +234,48 @@ def process_secure_request(action_type: str, student_id: str, session_token: str
         except (ValueError, TypeError):
             return {"status": "error", "message": "Validation Error: Graduation year must be between 2027 and 2035."}
 
-        # Check target test date rule: must be <= Dec 1 of junior year
+        # Fetch current target_test_date from the DB to preserve it without re-validating
+        try:
+            conn = sqlite3.connect(DB_PATH)
+            c = conn.cursor()
+            c.execute("SELECT target_test_date FROM students WHERE student_id = ?", (student_id,))
+            row = c.fetchone()
+            conn.close()
+            current_test_date = row[0] if row else ""
+        except Exception as e:
+            return {"status": "error", "message": f"Database Error: {str(e)}"}
+
+        try:
+            resp_str = call_mcp_tool("save_student_profile", {
+                "student_id": student_id,
+                "state_code": sanitize_input_string(state_code),
+                "graduation_year": grad_year,
+                "target_test_date": current_test_date,
+                "student_name": sanitize_input_string(student_name)
+            })
+            if resp_str.startswith("Success"):
+                return {"status": "success", "message": resp_str}
+            return {"status": "error", "message": resp_str}
+        except Exception as e:
+            return {"status": "error", "message": f"Service Connection Error: The profile update service is currently offline. Details: {str(e)}"}
+
+    elif action_type == "SAVE_TARGET_DATE":
+        target_test_date = payload.get("target_test_date", "")
+
+        # Fetch current profile details from the DB to preserve them and use for validation
+        try:
+            conn = sqlite3.connect(DB_PATH)
+            c = conn.cursor()
+            c.execute("SELECT state_code, graduation_year, student_name FROM students WHERE student_id = ?", (student_id,))
+            row = c.fetchone()
+            conn.close()
+            if row:
+                state_code, grad_year, student_name = row
+            else:
+                state_code, grad_year, student_name = "WA", 2028, "Student"
+        except Exception as e:
+            return {"status": "error", "message": f"Database Error: {str(e)}"}
+
         if target_test_date:
             date_error = _validate_test_date(target_test_date, grad_year)
             if date_error:
@@ -389,11 +440,15 @@ def process_secure_request(action_type: str, student_id: str, session_token: str
             return {"status": "error", "message": f"Analytics Database Error: {str(e)}"}
 
     elif action_type == "GET_SUMMARIES":
+        rate_err = _check_rate_limit(student_id, "GET_SUMMARIES")
+        if rate_err:
+            return rate_err
+
         state_code = payload.get("state_code", "WA")
         target_test_date = payload.get("target_test_date")
         pacing_strategy = payload.get("pacing_strategy", "")
         summary_type = payload.get("summary_type")
-        
+
         # Load profile settings via MCP tool for narrator context
         grad_year = 2028
         student_name = "Student"
@@ -407,7 +462,7 @@ def process_secure_request(action_type: str, student_id: str, session_token: str
                 student_name = profile_data.get("student_name", "Student")
         except Exception as e:
             print(f"DEBUG: Failed to read student profile via MCP for summaries: {str(e)}")
-            
+
         # Calculate days until test
         days_until_test = None
         if target_test_date:
@@ -418,44 +473,132 @@ def process_secure_request(action_type: str, student_id: str, session_token: str
                     days_until_test = 0
             except Exception:
                 pass
-                
+
+        # Fetch mastered skills and compute last/next per domain
+        mastered_skills = []
+        last_mastered_math = None
+        next_math = None
+        last_mastered_rw = None
+        next_rw = None
+        mastered_count = 0
+        total_skills = 0
+        try:
+            import sqlite3 as _sqlite3
+            conn = _sqlite3.connect(DB_PATH)
+            conn.row_factory = _sqlite3.Row
+            c = conn.cursor()
+            c.execute(
+                "SELECT topic FROM syllabus_progress WHERE student_id = ? AND is_completed = 1",
+                (student_id,)
+            )
+            mastered_skills = [row["topic"] for row in c.fetchall()]
+            conn.close()
+            mastered_count = len(mastered_skills)
+
+            # Load ordered skill lists from the syllabus JSON files
+            from agents.skills.curriculum_mapper.scheduler_skill import generate_schedule
+            import json as _json, os as _os
+            _skill_dir = _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), "agents", "skills", "curriculum_mapper")
+
+            def _ordered_skills(filename):
+                try:
+                    with open(_os.path.join(_skill_dir, filename)) as f:
+                        syllabus = _json.load(f)
+                    skills = []
+                    for unit in syllabus.get("units", []):
+                        domain = unit.get("domain")
+                        for topic in unit.get("topics", []):
+                            topic_name = topic.get("name")
+                            for skill in topic.get("granular_skills", []):
+                                skills.append(f"{domain}: {topic_name} - {skill}")
+                    return skills
+                except Exception:
+                    return []
+
+            math_skills = _ordered_skills("math_granular_syllabus.json")
+            rw_skills   = _ordered_skills("rw_granular_syllabus.json")
+            total_skills = len(math_skills) + len(rw_skills)
+
+            mastered_set = set(mastered_skills)
+            math_mastered = [s for s in math_skills if s in mastered_set]
+            math_remaining = [s for s in math_skills if s not in mastered_set]
+            last_mastered_math = math_mastered[-1] if math_mastered else None
+            next_math = math_remaining[0] if math_remaining else None
+
+            rw_mastered = [s for s in rw_skills if s in mastered_set]
+            rw_remaining = [s for s in rw_skills if s not in mastered_set]
+            last_mastered_rw = rw_mastered[-1] if rw_mastered else None
+            next_rw = rw_remaining[0] if rw_remaining else None
+
+        except Exception as e:
+            print(f"DEBUG: Failed to fetch mastered skills for narrator: {str(e)}")
+
         try:
             narrator = NarratorAgent()
             if summary_type == "schedule":
-                res = narrator.generate_schedule_summary(state_code, target_test_date, pacing_strategy, grad_year, days_until_test, student_name)
+                res = narrator.generate_schedule_summary(
+                    state_code, target_test_date, pacing_strategy,
+                    grad_year, days_until_test, student_name,
+                    mastered_count=mastered_count, total_skills=total_skills
+                )
                 return {"status": "success", "data": {"schedule_summary": res}}
             elif summary_type == "math":
-                res = narrator.generate_math_summary()
+                res = narrator.generate_math_summary(
+                    student_name=student_name,
+                    last_mastered_math=last_mastered_math,
+                    next_math=next_math,
+                )
                 return {"status": "success", "data": {"math_summary": res}}
             elif summary_type == "rw":
-                res = narrator.generate_rw_summary()
+                res = narrator.generate_rw_summary(
+                    student_name=student_name,
+                    last_mastered_rw=last_mastered_rw,
+                    next_rw=next_rw,
+                )
                 return {"status": "success", "data": {"rw_summary": res}}
             elif summary_type == "tutor":
-                res = narrator.generate_tutor_summary()
+                res = narrator.generate_tutor_summary(
+                    student_name=student_name,
+                    days_until_test=days_until_test,
+                )
                 return {"status": "success", "data": {"tutor_summary": res}}
             else:
                 import concurrent.futures
                 with concurrent.futures.ThreadPoolExecutor(max_workers=4) as executor:
-                    f_sched = executor.submit(narrator.generate_schedule_summary, state_code, target_test_date, pacing_strategy, grad_year, days_until_test, student_name)
-                    f_math = executor.submit(narrator.generate_math_summary)
-                    f_rw = executor.submit(narrator.generate_rw_summary)
-                    f_tutor = executor.submit(narrator.generate_tutor_summary)
-                    
+                    f_sched = executor.submit(
+                        narrator.generate_schedule_summary,
+                        state_code, target_test_date, pacing_strategy,
+                        grad_year, days_until_test, student_name,
+                        mastered_count, total_skills
+                    )
+                    f_math = executor.submit(
+                        narrator.generate_math_summary,
+                        student_name, last_mastered_math, next_math
+                    )
+                    f_rw = executor.submit(
+                        narrator.generate_rw_summary,
+                        student_name, last_mastered_rw, next_rw
+                    )
+                    f_tutor = executor.submit(
+                        narrator.generate_tutor_summary,
+                        student_name, days_until_test
+                    )
                     schedule_summary = f_sched.result()
-                    math_summary = f_math.result()
-                    rw_summary = f_rw.result()
-                    tutor_summary = f_tutor.result()
+                    math_summary     = f_math.result()
+                    rw_summary       = f_rw.result()
+                    tutor_summary    = f_tutor.result()
                 return {
                     "status": "success",
                     "data": {
                         "schedule_summary": schedule_summary,
                         "math_summary": math_summary,
                         "rw_summary": rw_summary,
-                        "tutor_summary": tutor_summary
+                        "tutor_summary": tutor_summary,
                     }
                 }
         except Exception as e:
             return {"status": "error", "message": f"Summary Generation Error: {str(e)}"}
+
 
     elif action_type == "UPDATE_SYLLABUS":
         topic = payload.get("topic")

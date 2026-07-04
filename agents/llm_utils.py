@@ -6,7 +6,8 @@ from dotenv import load_dotenv
 from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception
 
 # Load environment variables from .env at module import time.
-load_dotenv()
+# We set override=True so that local config takes precedence over shell environments.
+load_dotenv(override=True)
 
 logger = logging.getLogger("testprep.llm")
 LLM_TIMEOUT_SECONDS = 45

@@ -1,7 +1,6 @@
 import os
 import time
 from google import genai
-from google.genai import types
 from agents.llm_utils import call_gemini_with_retry
 from telemetry import log_llm_call
 
@@ -9,75 +8,61 @@ class NarratorAgent:
     def __init__(self, *args, **kwargs):
         if "GEMINI_API_KEY" in os.environ:
             os.environ["GEMINI_API_KEY"] = os.environ["GEMINI_API_KEY"].strip()
-            
+
         try:
             self.client = genai.Client()
         except Exception as e:
             print(f"DEBUG: Narrator Agent client initialization failed: {str(e)}")
             self.client = None
 
-    def generate_schedule_summary(self, state_code, target_test_date, pacing_strategy, graduation_year=None, days_until_test=None, student_name="Student"):
-        """Generates schedule-specific brief (no emojis, no bold stars, no dates)."""
+    def generate_schedule_summary(
+        self,
+        state_code,
+        target_test_date,
+        pacing_strategy,
+        graduation_year=None,
+        days_until_test=None,
+        student_name="Student",
+        mastered_count=0,
+        total_skills=0,
+    ):
+        """Generates a warm, personal schedule paragraph referencing mastered skill count and time left."""
         if not student_name or student_name.strip() == "":
             student_name = "Student"
-            
-        import math
-        # 1. Determine pacing context and exact time phrasing
-        pacing_context = ""
-        time_phrasing = "ample time to prepare"
-        
-        if days_until_test is not None:
-            weeks_remaining = math.ceil(days_until_test / 7)
-            if days_until_test < 30:
-                time_phrasing = f"{days_until_test} days remaining until your test"
-                pacing_context = f"The test is approaching rapidly. Greet {student_name} and explain that this is a high-intensity, fast-paced sprint focusing heavily on practice testing, hacks, and targeted review since they only have {time_phrasing}."
-            elif weeks_remaining <= 35:
-                time_phrasing = f"{weeks_remaining} weeks remaining until your test"
-                pacing_context = f"The test is approaching soon. Greet {student_name} and explain that this is a focused preparation timeline with {time_phrasing}."
-            else:
-                time_phrasing = "enough time to prepare for your test"
-                pacing_context = f"The test is far in the future. Greet {student_name} and explain that this is a balanced, comfortable timeline to build skills and practice since they have enough time to prepare."
+
+        import math as _math
+        weeks_remaining = _math.ceil(days_until_test / 7) if days_until_test and days_until_test > 0 else None
+
+        if days_until_test is not None and days_until_test < 30:
+            time_fact = f"{days_until_test} days until the test"
+        elif weeks_remaining is not None:
+            time_fact = f"{weeks_remaining} weeks until the test"
         else:
-            time_phrasing = "ample time to prepare"
-            if graduation_year:
-                if graduation_year >= 2030:
-                    pacing_context = f"Since no test date is set and you are in 9th grade, greet {student_name} and explain that this is a long-term strategic Foundations approach to build core skills slowly and comfortably (manageable 2 hours/week) to familiarize yourself with the test over time."
-                elif graduation_year == 2029:
-                    pacing_context = f"Since no test date is set and you are in 10th grade, greet {student_name} and explain that this is an intermediate-term skills development pacing strategy."
-                else:
-                    pacing_context = f"Since no test date is set and you are in 11th/12th grade, greet {student_name} and explain that this is a standard preparation schedule to prepare you by your upcoming test."
+            time_fact = "plenty of time to prepare before the test"
+
+        progress_fact = (
+            f"{mastered_count} out of {total_skills} skills already mastered"
+            if total_skills > 0 and mastered_count > 0
+            else "just getting started - no skills checked off yet"
+        )
+
+        prompt = f"""You are a warm, encouraging academic coach writing a personal, engaging note for a high school student preparing for the SAT/PSAT and aiming to qualify for the National Merit Scholarship in {state_code}.
+
+Student name: {student_name}
+Time left: {time_fact}
+Progress: {progress_fact}
+Current pacing strategy: {pacing_strategy}
+
+Write 5-7 sentences directly to {student_name}. Use their name naturally. Weave in the time and progress facts conversationally. Be warm, vivid, and encouraging. Express genuine belief in their ability to qualify for National Merit in {state_code}. Mention they can enter their target test date to auto-adjust the schedule, and download it to their calendar. You may use bold text, bullet points, and a few relevant emojis to make the message feel lively and motivating.
+"""
 
         if self.client:
             t0 = time.time()
-            prompt = ""
             try:
-                prompt = f"""
-                You are an encouraging and inspiring academic coach writing a personal summary for a high school student aiming to qualify for the National Merit Scholarship through the PSAT/SAT.
-
-                STUDENT PROFILE:
-                - Name: {student_name}
-                - State: {state_code}
-                
-                PACING STRATEGY INSTRUCTIONS:
-                {pacing_context}
-                
-                CRITICAL INSTRUCTIONS:
-                - Keep the summary brief and highly readable (1 short paragraph).
-                - Greet the student naturally using their first name {student_name} (never use the word "Student" or other generic titles).
-                - Retell the pacing and timeline ideas naturally in your own words based on the PACING STRATEGY INSTRUCTIONS.
-                - Remove all emojis, icons, and picture representations.
-                - Do not use any bold formatting (remove all double asterisks **).
-                - Do not mention or repeat the student's graduation year.
-                - Do not mention any specific test date or year.
-                - Advise the student to download the schedule to their calendar using the download button to set study reminders.
-                - Explain that they can input their future test date to automatically adjust the schedule, ensuring all material is covered on time.
-                - Express strong belief in their ability to study hard and qualify for the National Merit Scholarship in {state_code}.
-                - Format the output in plain text.
-                """
                 response = call_gemini_with_retry(
                     self.client,
                     model="gemini-2.5-flash",
-                    contents=prompt
+                    contents=prompt,
                 )
                 latency_ms = int((time.time() - t0) * 1000)
                 log_llm_call(
@@ -85,47 +70,68 @@ class NarratorAgent:
                     prompt_chars=len(prompt),
                     response_chars=len(response.text),
                     latency_ms=latency_ms,
-                    status="ok"
+                    status="ok",
                 )
-                return response.text.strip().replace("**", "").replace("*", "")
+                return response.text.strip()
             except Exception as e:
                 latency_ms = int((time.time() - t0) * 1000)
                 log_llm_call(
                     agent="narrator_schedule",
-                    prompt_chars=len(prompt) if prompt else 0,
+                    prompt_chars=len(prompt),
                     response_chars=0,
                     latency_ms=latency_ms,
-                    status="error"
+                    status="error",
                 )
-                print(f"DEBUG: Narrator Agent generate_schedule_summary failed: {str(e)}")
+                print(f"DEBUG: Narrator generate_schedule_summary failed: {str(e)}")
 
-        # Fallback Mock Generator adhering strictly to user guidelines
-        test_date_phrase = f"before your target test date of {target_test_date}" if target_test_date else "by your test"
-        return f"Based on your profile and scores, we have custom-built a study schedule to help you qualify for the prestigious National Merit Scholarship in {state_code}. We have aligned your timeline under the {pacing_strategy.split('.')[0]} pacing strategy. This gives you the optimal balance of concept building and practice testing {test_date_phrase}. To get the most out of your prep, click the Download Calendar button below to add this schedule to your personal calendar for weekly reminders. If you want to adjust your plan, simply enter your target test date in the input field—your timeline will automatically recalculate to make sure everything is covered right on time."
+        return (
+            f"You have a personalized study plan built just for you, {student_name}. "
+            f"With {progress_fact} and {time_fact}, your schedule is optimized to cover everything on time. "
+            f"Enter your target test date to auto-adjust the timeline, and download it to your calendar to stay on track. "
+            f"You have what it takes to qualify for the National Merit Scholarship in {state_code}."
+        )
 
-    def generate_math_summary(self):
-        """Generates math-specific checklist brief (no emojis, no bold stars)."""
+    def generate_math_summary(
+        self,
+        student_name="Student",
+        last_mastered_math=None,
+        next_math=None,
+    ):
+        """Generates a personal Math tab paragraph referencing the student's last mastered and next Math skill."""
+        if not student_name or student_name.strip() == "":
+            student_name = "Student"
+
+        if last_mastered_math and next_math:
+            progress_context = (
+                f'The last Math skill they mastered is: "{last_mastered_math}". '
+                f'The next Math skill they have not studied yet is: "{next_math}".'
+            )
+        elif last_mastered_math and not next_math:
+            progress_context = (
+                f'They have mastered every Math skill on the list, most recently "{last_mastered_math}". '
+                "Encourage them to focus on full-length practice tests."
+            )
+        else:
+            progress_context = (
+                "They have not checked off any Math skills yet. "
+                f"Encourage {student_name} to look through the list and check off anything they already know - "
+                "every checked skill is automatically removed from their weekly schedule."
+            )
+
+        prompt = f"""You are a warm, encouraging academic coach writing a personal, engaging note for {student_name} about their Math prep.
+
+Context: {progress_context}
+
+Write 5-7 sentences directly to {student_name}. Use their name naturally once. Acknowledge their Math progress warmly and specifically — call out what they accomplished. If they have a next skill, name it and encourage them to tackle it next; mention the question mark (?) button for an instant AI explanation before they dive in. Remind them that checking off a skill removes it from their schedule so they only study what is new. You may use bold text, bullet points, and a few relevant emojis to make the message feel lively and motivating.
+"""
+
         if self.client:
             t0 = time.time()
-            prompt = ""
             try:
-                prompt = """
-                You are an encouraging academic coach writing a short orientation note for a student.
-
-                CRITICAL INSTRUCTIONS:
-                - Write exactly 1 short paragraph (3-4 sentences).
-                - Do not address the student as "future scholar" or other titles.
-                - Remove all emojis, icons, and picture representations.
-                - Do not use any bold formatting (remove all double asterisks **).
-                - Tell the student: look through the Math concept list below. Every topic or skill they already know can be checked off with the checkmark button on the right — once checked, it is automatically removed from their weekly schedule so they can focus only on what is new.
-                - Mention that if they want to understand any topic or skill better before deciding, they can click the question mark (?) button next to it for an instant AI explanation.
-                - Mention that they can uncheck anything at any time to bring it back into their schedule.
-                - Format the output in plain text.
-                """
                 response = call_gemini_with_retry(
                     self.client,
                     model="gemini-2.5-flash",
-                    contents=prompt
+                    contents=prompt,
                 )
                 latency_ms = int((time.time() - t0) * 1000)
                 log_llm_call(
@@ -133,51 +139,73 @@ class NarratorAgent:
                     prompt_chars=len(prompt),
                     response_chars=len(response.text),
                     latency_ms=latency_ms,
-                    status="ok"
+                    status="ok",
                 )
-                return response.text.strip().replace("**", "").replace("*", "")
+                return response.text.strip()
             except Exception as e:
                 latency_ms = int((time.time() - t0) * 1000)
                 log_llm_call(
                     agent="narrator_math",
-                    prompt_chars=len(prompt) if prompt else 0,
+                    prompt_chars=len(prompt),
                     response_chars=0,
                     latency_ms=latency_ms,
-                    status="error"
+                    status="error",
                 )
-                print(f"DEBUG: Narrator Agent generate_math_summary failed: {str(e)}")
+                print(f"DEBUG: Narrator generate_math_summary failed: {str(e)}")
 
-        # Fallback
+        if next_math:
+            return (
+                f"Great work so far, {student_name}. Your next Math topic to tackle is {next_math}. "
+                "Click the question mark button next to any skill for an instant AI explanation, "
+                "and check off anything you already know to keep your schedule focused on what is new."
+            )
         return (
-            "Look through the Math concept list below and check off anything you have already mastered. "
-            "Once checked, that topic is automatically removed from your weekly schedule so you can focus on what is new. "
-            "Not sure whether you know a topic well enough? Click the question mark (?) button next to it for an instant AI explanation. "
-            "You can uncheck any topic at any time to bring it back into your plan."
+            f"Look through the Math list below, {student_name}, and check off anything you have already mastered. "
+            "Once checked, that skill is removed from your weekly schedule automatically. "
+            "Use the question mark button for an instant AI explanation of any topic you want to review first."
         )
 
-    def generate_rw_summary(self):
-        """Generates R/W-specific checklist brief (no emojis, no bold stars)."""
+    def generate_rw_summary(
+        self,
+        student_name="Student",
+        last_mastered_rw=None,
+        next_rw=None,
+    ):
+        """Generates a personal Reading & Writing tab paragraph referencing the student's last mastered and next RW skill."""
+        if not student_name or student_name.strip() == "":
+            student_name = "Student"
+
+        if last_mastered_rw and next_rw:
+            progress_context = (
+                f'The last Reading & Writing skill they mastered is: "{last_mastered_rw}". '
+                f'The next Reading & Writing skill they have not studied yet is: "{next_rw}".'
+            )
+        elif last_mastered_rw and not next_rw:
+            progress_context = (
+                f'They have mastered every Reading & Writing skill, most recently "{last_mastered_rw}". '
+                "Encourage them to focus on full-length practice tests."
+            )
+        else:
+            progress_context = (
+                "They have not checked off any Reading & Writing skills yet. "
+                f"Encourage {student_name} to go through the list and check off anything they already know - "
+                "every checked skill is automatically removed from their weekly schedule."
+            )
+
+        prompt = f"""You are a warm, encouraging academic coach writing a personal, engaging note for {student_name} about their Reading and Writing prep.
+
+Context: {progress_context}
+
+Write 5-7 sentences directly to {student_name}. Use their name naturally once. Acknowledge their Reading & Writing progress warmly and specifically — call out what they accomplished. If they have a next skill, name it and encourage them to tackle it; mention the question mark (?) button for an instant AI explanation. Remind them that checking off a skill removes it from their schedule so they only study what is new. You may use bold text, bullet points, and a few relevant emojis to make the message feel lively and motivating.
+"""
+
         if self.client:
             t0 = time.time()
-            prompt = ""
             try:
-                prompt = """
-                You are an encouraging academic coach writing a short orientation note for a student.
-
-                CRITICAL INSTRUCTIONS:
-                - Write exactly 1 short paragraph (3-4 sentences).
-                - Do not address the student as "future scholar" or other titles.
-                - Remove all emojis, icons, and picture representations.
-                - Do not use any bold formatting (remove all double asterisks **).
-                - Tell the student: look through the Reading and Writing skill list below. Every skill they have already mastered can be checked off with the checkmark button on the right — once checked, it is automatically removed from their weekly schedule so they can focus only on what is new.
-                - Mention that if they want to understand any skill better before deciding, they can click the question mark (?) button next to it for an instant AI explanation.
-                - Mention that they can uncheck anything at any time to bring it back into their schedule.
-                - Format the output in plain text.
-                """
                 response = call_gemini_with_retry(
                     self.client,
                     model="gemini-2.5-flash",
-                    contents=prompt
+                    contents=prompt,
                 )
                 latency_ms = int((time.time() - t0) * 1000)
                 log_llm_call(
@@ -185,50 +213,67 @@ class NarratorAgent:
                     prompt_chars=len(prompt),
                     response_chars=len(response.text),
                     latency_ms=latency_ms,
-                    status="ok"
+                    status="ok",
                 )
-                return response.text.strip().replace("**", "").replace("*", "")
+                return response.text.strip()
             except Exception as e:
                 latency_ms = int((time.time() - t0) * 1000)
                 log_llm_call(
                     agent="narrator_rw",
-                    prompt_chars=len(prompt) if prompt else 0,
+                    prompt_chars=len(prompt),
                     response_chars=0,
                     latency_ms=latency_ms,
-                    status="error"
+                    status="error",
                 )
-                print(f"DEBUG: Narrator Agent generate_rw_summary failed: {str(e)}")
+                print(f"DEBUG: Narrator generate_rw_summary failed: {str(e)}")
 
-        # Fallback
+        if next_rw:
+            return (
+                f"Nice progress, {student_name}. Your next Reading & Writing skill to study is {next_rw}. "
+                "Click the question mark next to any skill for an instant explanation, "
+                "and check off what you know to keep your plan tight."
+            )
         return (
-            "Look through the Reading and Writing skill list below and check off anything you have already mastered. "
-            "Once checked, that skill is automatically removed from your weekly schedule so your prep time goes toward what is still new. "
-            "Not sure whether you have truly nailed a skill? Click the question mark (?) button next to it for an instant AI explanation. "
-            "You can uncheck any skill at any time to bring it back into your plan."
+            f"Look through the Reading & Writing list below, {student_name}, and check off anything you have already mastered. "
+            "Once checked, that skill is removed from your weekly schedule automatically. "
+            "Use the question mark button for an instant AI explanation of any skill you want to review first."
         )
 
-    def generate_tutor_summary(self):
-        """Generates tutor chat brief (no emojis, no bold stars)."""
+    def generate_tutor_summary(
+        self,
+        student_name="Student",
+        days_until_test=None,
+    ):
+        """Generates a time-aware tutor intro with a warm encouragement and a practical study tip."""
+        if not student_name or student_name.strip() == "":
+            student_name = "Student"
+
+        import math as _math
+        if days_until_test is not None and days_until_test > 0:
+            weeks_remaining = _math.ceil(days_until_test / 7)
+            if days_until_test < 14:
+                time_context = f"The test is only {days_until_test} days away - this is the final stretch."
+            elif weeks_remaining <= 6:
+                time_context = f"With {weeks_remaining} weeks to go, the test is coming up soon."
+            else:
+                time_context = f"There are {weeks_remaining} weeks until the test - enough time to build real confidence."
+        else:
+            time_context = "The test is on the horizon and every study session counts."
+
+        prompt = f"""You are a warm, encouraging academic coach writing a personal, engaging intro for {student_name} before they use an AI tutor chat.
+
+Context: {time_context}
+
+Write 5-7 sentences directly to {student_name}. Acknowledge the exam timeline warmly. Encourage them to use this chat to ask anything about the SAT or PSAT - rules, topics, scoring, strategy. Mention the tutor answers from official College Board materials. End with one practical, specific study tip (for example: quality sleep the night before a practice test improves recall, or timed practice sections train your pacing instinct). Keep it warm, personal, and energising. You may use bold text, bullet points, and a few relevant emojis to make the message feel lively and motivating.
+"""
+
         if self.client:
             t0 = time.time()
-            prompt = ""
             try:
-                prompt = """
-                You are an encouraging academic coach writing a short instruction for a student.
-                
-                CRITICAL INSTRUCTIONS:
-                - Write exactly 1 short paragraph (2-3 sentences).
-                - Do not address the student as "future scholar" or other titles.
-                - Remove all emojis, icons, and picture representations.
-                - Do not use any bold formatting (remove all double asterisks **).
-                - Explain to the student: in this chat, they can ask any question about the SAT or PSAT exam, rules, curriculum, and scoring.
-                - Explain that the tutor will answer their questions strictly using information from official College Board documents.
-                - Format the output in plain text.
-                """
                 response = call_gemini_with_retry(
                     self.client,
                     model="gemini-2.5-flash",
-                    contents=prompt
+                    contents=prompt,
                 )
                 latency_ms = int((time.time() - t0) * 1000)
                 log_llm_call(
@@ -236,19 +281,22 @@ class NarratorAgent:
                     prompt_chars=len(prompt),
                     response_chars=len(response.text),
                     latency_ms=latency_ms,
-                    status="ok"
+                    status="ok",
                 )
                 return response.text.strip().replace("**", "").replace("*", "")
             except Exception as e:
                 latency_ms = int((time.time() - t0) * 1000)
                 log_llm_call(
                     agent="narrator_tutor",
-                    prompt_chars=len(prompt) if prompt else 0,
+                    prompt_chars=len(prompt),
                     response_chars=0,
                     latency_ms=latency_ms,
-                    status="error"
+                    status="error",
                 )
-                print(f"DEBUG: Narrator Agent generate_tutor_summary failed: {str(e)}")
+                print(f"DEBUG: Narrator generate_tutor_summary failed: {str(e)}")
 
-        # Fallback Mock Generator adhering strictly to user guidelines
-        return "Not sure how the PSAT or SAT works? In this chat, you can ask any question about the SAT or PSAT exam, rules, curriculum, and scoring. The tutor will answer your questions strictly using information from official College Board documents."
+        return (
+            f"You've got this, {student_name}. Use this chat to ask anything about the SAT or PSAT - "
+            "exam rules, topics, scoring, or strategy. The tutor answers strictly from official College Board materials. "
+            "One tip: getting a full night of sleep before a practice test makes a real difference in how you perform."
+        )
