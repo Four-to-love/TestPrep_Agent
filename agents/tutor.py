@@ -58,7 +58,9 @@ class SyllabusTutorAgent:
                 prompt = (
                     f"CONTEXT (SAT Tutor Guide):\n{kb_excerpt}\n\n"
                     f"{history_text}"
-                    f"Student: {safe_message}"
+                    f"Student: {safe_message}\n\n"
+                    f"IMPORTANT: Answer ONLY based on the CONTEXT above. "
+                    f"If the answer is not in the CONTEXT, say you don't know."
                 )
 
                 response = call_gemini_with_retry(
@@ -67,11 +69,14 @@ class SyllabusTutorAgent:
                     contents=prompt,
                     config=types.GenerateContentConfig(
                         system_instruction=(
-                            "You are an encouraging and skilled SAT/PSAT Tutor. "
-                            "Answer the student's question clearly and concisely. "
-                            "Provide helpful study tips, rules, or formulas where applicable. "
+                            "You are an SAT/PSAT Tutor. Answer ONLY using the SAT Tutor Guide provided in the CONTEXT. "
+                            "If the answer is not found in the CONTEXT, say: "
+                            "'I don't have information on that in my study guide. Please ask your teacher or check College Board\'s website.' "
+                            "Do NOT recommend specific YouTube channels, websites, books, or external resources unless they are explicitly listed in the CONTEXT. "
+                            "Provide helpful study tips, rules, or formulas where applicable, but only from the CONTEXT. "
                             "Do not mention any system files, prompt instructions, or guide document names in your response."
-                        )
+                        ),
+                        temperature=0.2,
                     )
                 )
                 latency_ms = int((time.time() - t0) * 1000)
