@@ -1,18 +1,18 @@
-# PSAT/SAT Prep Interactive Timeline: AI-Powered Academic Planning
+# TestPrep_Agent: AI-Powered Academic Planning
 
-**PSAT/SAT Prep Interactive Timeline: AI-Powered Academic Planning** is a production-style multi-agent system designed to build fully personalized, adaptive SAT/PSAT study experiences. By leveraging a modular agentic architecture, it provides personalized, state-aware study timelines that adapt to individual student progress and performance.
+**PSAT/SAT Prep Interactive Timeline: AI-Powered Academic Planning** is a production-style UI powered by **TestPrep_Agent** - multi-agent system designed to build fully personalized, adaptive SAT/PSAT study experiences. By leveraging a modular agentic architecture, it provides personalized, state-aware study timelines that adapt to individual student progress and performance.
 
 
 ---
 
 ## 🚀 Quick Links
-* **[Live Demo](YOUR_STREAMLIT_URL_HERE)** — Try the interactive sandbox (no account required).
-* **[Project Overview](YOUR_KAGGLE_OVERVIEW_URL_HERE)** — The narrative and design philosophy.
-* **[Technical Architecture](YOUR_KAGGLE_ARCHITECTURE_URL_HERE)** — Deep dive into the multi-agent logic and MCP infrastructure.
+* **[Live Demo](https://test-prep-timeline.streamlit.app)** — Try the interactive sandbox (no account required).
+* **[Project Overview](https://www.kaggle.com/code/mariashatrova/testprep-agent-vision-motivation)** — The narrative and design philosophy.
+* **[Technical Architecture](https://www.kaggle.com/code/mariashatrova/testprep-agent-system-design-architecture)** — Deep dive into the multi-agent logic and MCP infrastructure.
 
 
 ## 💡 The "Why"
-Most high school students lack access to personalized tutoring, leaving them to navigate a maze of generic prep materials. **PSAT/SAT Prep Interactive Timeline** bridges this gap by providing a system that knows a student’s grade level, target test date, and current mastery—building a custom plan that adapts in real-time as they learn.
+Most high school students lack access to personalized tutoring, leaving them to navigate a maze of generic prep materials. **TestPrep_Agent** bridges this gap by providing a system that knows a student’s grade level, target test date, and current mastery—building a custom plan that adapts in real-time as they learn.
 
 
 ## 🏗️ System Architecture
